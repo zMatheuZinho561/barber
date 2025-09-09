@@ -1,5 +1,7 @@
 <?php
 // security/Security.php
+require_once __DIR__ . '/../config/database.php';
+
 class Security {
     private $db;
     private $config;
@@ -27,7 +29,7 @@ class Security {
     public function checkBruteForce($ip, $email = null) {
         try {
             $stmt = $this->db->prepare("
-                SELECT attempts, blocked_until 
+                SELECT attempts, blocked_until, updated_at
                 FROM login_attempts 
                 WHERE ip_address = ? AND (email = ? OR email IS NULL)
                 ORDER BY updated_at DESC LIMIT 1
@@ -165,19 +167,26 @@ class Security {
             $expiresAt = date('Y-m-d H:i:s', time() + $this->config['session_timeout']);
             $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
             
-            // Invalidar sessões antigas do usuário
-            $this->invalidateOldSessions($userId);
+            // Invalidar sessões antigas do usuário (limitar a 3 sessões ativas)
+            $this->invalidateOldSessions($userId, 3);
             
             // Criar nova sessão
             $stmt = $this->db->prepare("
-                INSERT INTO user_sessions (user_id, session_id, ip_address, user_agent, expires_at) 
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO user_sessions (user_id, session_id, ip_address, user_agent, expires_at, created_at, updated_at) 
+                VALUES (?, ?, ?, ?, ?, NOW(), NOW())
             ");
             $stmt->execute([$userId, $sessionId, $ip, $userAgent, $expiresAt]);
             
-            // Definir cookie de sessão
-            setcookie('barbershop_session', $sessionId, time() + $this->config['session_timeout'], 
-                     '/', '', isset($_SERVER['HTTPS']), true);
+            // Definir cookie de sessão com configurações de segurança
+            $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+            setcookie('barbershop_session', $sessionId, [
+                'expires' => time() + $this->config['session_timeout'],
+                'path' => '/',
+                'domain' => '',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'Strict'
+            ]);
             
             $this->logSecurity($userId, 'session_created', $ip, [
                 'session_id' => substr($sessionId, 0, 8) . '...',
@@ -207,22 +216,14 @@ class Security {
                 return false;
             }
             
-            // Verificar IP (opcional - pode ser desabilitado se causar problemas)
-            if ($session['ip_address'] !== $ip) {
-                $this->logSecurity($session['user_id'], 'session_ip_mismatch', $ip, [
-                    'original_ip' => $session['ip_address'],
-                    'current_ip' => $ip
-                ], 'warning');
-                
-                // Comentar a linha abaixo se quiser permitir mudança de IP
-                // return false;
-            }
-            
             // Verificar se usuário ainda está ativo
             if (!$session['is_active']) {
                 $this->destroySession($sessionId);
                 return false;
             }
+            
+            // Atualizar timestamp da sessão
+            $this->updateSessionActivity($sessionId);
             
             // Renovar sessão se está próxima do vencimento (últimos 15 minutos)
             if (strtotime($session['expires_at']) - time() < 900) {
@@ -247,32 +248,49 @@ class Security {
             $stmt->execute([$sessionId]);
             
             // Remover cookie
-            setcookie('barbershop_session', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
+            $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+            setcookie('barbershop_session', '', [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'domain' => '',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'Strict'
+            ]);
             
         } catch (Exception $e) {
             error_log("Erro ao destruir sessão: " . $e->getMessage());
         }
     }
     
-    private function invalidateOldSessions($userId, $keepCurrent = null) {
+    private function invalidateOldSessions($userId, $maxSessions = 3) {
         try {
-            if ($keepCurrent) {
-                $stmt = $this->db->prepare("
-                    UPDATE user_sessions 
-                    SET is_active = 0 
-                    WHERE user_id = ? AND session_id != ? AND is_active = 1
-                ");
-                $stmt->execute([$userId, $keepCurrent]);
-            } else {
-                $stmt = $this->db->prepare("
-                    UPDATE user_sessions 
-                    SET is_active = 0 
-                    WHERE user_id = ? AND is_active = 1
-                ");
-                $stmt->execute([$userId]);
-            }
+            // Manter apenas as N sessões mais recentes
+            $stmt = $this->db->prepare("
+                UPDATE user_sessions 
+                SET is_active = 0 
+                WHERE user_id = ? AND is_active = 1 
+                AND id NOT IN (
+                    SELECT id FROM (
+                        SELECT id FROM user_sessions 
+                        WHERE user_id = ? AND is_active = 1 
+                        ORDER BY updated_at DESC 
+                        LIMIT ?
+                    ) AS recent_sessions
+                )
+            ");
+            $stmt->execute([$userId, $userId, $maxSessions - 1]);
         } catch (Exception $e) {
             error_log("Erro ao invalidar sessões antigas: " . $e->getMessage());
+        }
+    }
+    
+    private function updateSessionActivity($sessionId) {
+        try {
+            $stmt = $this->db->prepare("UPDATE user_sessions SET updated_at = NOW() WHERE session_id = ?");
+            $stmt->execute([$sessionId]);
+        } catch (Exception $e) {
+            error_log("Erro ao atualizar atividade da sessão: " . $e->getMessage());
         }
     }
     
@@ -283,8 +301,15 @@ class Security {
             $stmt->execute([$newExpiry, $sessionId]);
             
             // Atualizar cookie
-            setcookie('barbershop_session', $sessionId, time() + $this->config['session_timeout'], 
-                     '/', '', isset($_SERVER['HTTPS']), true);
+            $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+            setcookie('barbershop_session', $sessionId, [
+                'expires' => time() + $this->config['session_timeout'],
+                'path' => '/',
+                'domain' => '',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'Strict'
+            ]);
                      
         } catch (Exception $e) {
             error_log("Erro ao renovar sessão: " . $e->getMessage());
@@ -296,6 +321,10 @@ class Security {
     // ============================================
     
     public function generateCSRFToken() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
         if (!isset($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time']) ||
             time() - $_SESSION['csrf_token_time'] > $this->config['csrf_token_lifetime']) {
             
@@ -307,6 +336,10 @@ class Security {
     }
     
     public function validateCSRFToken($token) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
         if (!isset($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time'])) {
             return false;
         }
@@ -358,6 +391,10 @@ class Security {
         return preg_match('/^[1-9]{2}9?[0-9]{8}$/', $phone);
     }
     
+    public function validatePassword($password) {
+        return strlen($password) >= 6;
+    }
+    
     // ============================================
     // RATE LIMITING
     // ============================================
@@ -366,12 +403,15 @@ class Security {
         $maxRequests = $maxRequests ?? $this->config['rate_limit_requests'];
         
         try {
+            $cacheDir = sys_get_temp_dir() . '/barbershop_rate_limit';
+            if (!is_dir($cacheDir)) {
+                mkdir($cacheDir, 0755, true);
+            }
+            
             $key = "rate_limit_" . md5($identifier);
+            $cacheFile = $cacheDir . "/$key.cache";
             $currentTime = time();
             $windowStart = $currentTime - $timeWindow;
-            
-            // Para simplicidade, usar arquivo (em produção, usar Redis/Memcached)
-            $cacheFile = sys_get_temp_dir() . "/$key.cache";
             
             $requests = [];
             if (file_exists($cacheFile)) {
@@ -412,8 +452,8 @@ class Security {
     public function logSecurity($userId, $action, $ip, $details = [], $severity = 'info') {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO security_logs (user_id, action, ip_address, user_agent, details, severity) 
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO security_logs (user_id, action, ip_address, user_agent, details, severity, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, NOW())
             ");
             $stmt->execute([
                 $userId,
@@ -479,7 +519,7 @@ class Security {
             // Limpar sessões expiradas
             $this->db->prepare("DELETE FROM user_sessions WHERE expires_at < NOW() OR is_active = 0")->execute();
             
-            // Limpar tentativas de login antigas
+            // Limpar tentativas de login antigas (maiores que 24h)
             $this->db->prepare("DELETE FROM login_attempts WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)")->execute();
             
             // Limpar logs antigos (manter apenas logs críticos por mais tempo)
@@ -513,7 +553,9 @@ class SecurityMiddleware {
     }
     
     public function checkAuth() {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         
         $sessionId = $_COOKIE['barbershop_session'] ?? null;
         

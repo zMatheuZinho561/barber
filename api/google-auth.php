@@ -3,7 +3,7 @@
 session_start();
 
 require_once '../config/database.php';
-require_once '../config/security.php';
+require_once '../security/Security.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -35,6 +35,7 @@ try {
     $jsonData = json_decode(file_get_contents('php://input'), true);
     
     if (!$jsonData) {
+        http_response_code(400);
         echo json_encode(['error' => true, 'message' => 'Dados inválidos']);
         exit;
     }
@@ -54,11 +55,13 @@ try {
     $avatar = $security->sanitizeInput($jsonData['avatar'] ?? '', 'string');
     
     if (!$googleId || !$email || !$name) {
+        http_response_code(400);
         echo json_encode(['error' => true, 'message' => 'Dados do Google incompletos']);
         exit;
     }
     
     if (!$security->validateEmail($email)) {
+        http_response_code(400);
         echo json_encode(['error' => true, 'message' => 'E-mail inválido']);
         exit;
     }

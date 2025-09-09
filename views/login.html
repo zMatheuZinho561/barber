@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarberShop - Login</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * {
             margin: 0;
@@ -173,9 +174,14 @@
             margin-bottom: 15px;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(78, 205, 196, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
 
         .btn-google {
@@ -188,12 +194,17 @@
             gap: 10px;
         }
 
-        .btn-google:hover {
+        .btn-google:hover:not(:disabled) {
             border-color: #4285f4;
             box-shadow: 0 4px 15px rgba(66, 133, 244, 0.2);
         }
 
-        .btn-google img {
+        .btn-google:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .google-icon {
             width: 20px;
             height: 20px;
         }
@@ -300,7 +311,6 @@
             }
         }
 
-        /* Animações para melhor UX */
         .container {
             animation: slideUp 0.6s ease-out;
         }
@@ -324,6 +334,7 @@
             cursor: pointer;
             color: #6c757d;
             transition: color 0.3s ease;
+            z-index: 10;
         }
 
         .password-toggle:hover {
@@ -336,6 +347,25 @@
 
         .form-group.has-icon input {
             padding-right: 50px;
+        }
+
+        /* Google Button Custom Styling */
+        .g-signin-button {
+            width: 100%;
+            height: 50px;
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .g-signin-button:hover {
+            border-color: #4285f4;
+            box-shadow: 0 4px 15px rgba(66, 133, 244, 0.2);
         }
     </style>
 </head>
@@ -359,13 +389,13 @@
             <form id="loginForm">
                 <div class="form-group">
                     <label for="loginEmail">E-mail</label>
-                    <input type="email" id="loginEmail" name="email" required>
+                    <input type="email" id="loginEmail" name="email" required autocomplete="email">
                     <div class="error-message">E-mail inválido</div>
                 </div>
 
                 <div class="form-group has-icon">
                     <label for="loginPassword">Senha</label>
-                    <input type="password" id="loginPassword" name="password" required>
+                    <input type="password" id="loginPassword" name="password" required autocomplete="current-password">
                     <i class="fas fa-eye password-toggle" data-target="loginPassword"></i>
                     <div class="error-message">Senha é obrigatória</div>
                 </div>
@@ -382,15 +412,24 @@
                 <span>ou</span>
             </div>
 
-            <button id="googleLogin" class="btn btn-google">
-                <svg width="20" height="20" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Continuar com Google
-            </button>
+            <!-- Google Sign-In Button -->
+            <div id="g_id_onload"
+                 data-client_id="SEU_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+                 data-context="signin"
+                 data-ux_mode="popup"
+                 data-callback="handleGoogleLogin"
+                 data-auto_prompt="false">
+            </div>
+
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-shape="rectangular"
+                 data-theme="outline"
+                 data-text="signin_with"
+                 data-size="large"
+                 data-logo_alignment="left"
+                 data-width="100%">
+            </div>
 
             <div class="forgot-password">
                 <a href="#" id="forgotPasswordLink">Esqueceu sua senha?</a>
@@ -402,32 +441,32 @@
             <form id="registerForm">
                 <div class="form-group">
                     <label for="registerName">Nome Completo</label>
-                    <input type="text" id="registerName" name="name" required>
+                    <input type="text" id="registerName" name="name" required autocomplete="name">
                     <div class="error-message">Nome é obrigatório</div>
                 </div>
 
                 <div class="form-group">
                     <label for="registerEmail">E-mail</label>
-                    <input type="email" id="registerEmail" name="email" required>
+                    <input type="email" id="registerEmail" name="email" required autocomplete="email">
                     <div class="error-message">E-mail inválido</div>
                 </div>
 
                 <div class="form-group">
                     <label for="registerPhone">Telefone</label>
-                    <input type="tel" id="registerPhone" name="phone" placeholder="(11) 99999-9999">
+                    <input type="tel" id="registerPhone" name="phone" placeholder="(11) 99999-9999" autocomplete="tel">
                     <div class="error-message">Telefone inválido</div>
                 </div>
 
                 <div class="form-group has-icon">
                     <label for="registerPassword">Senha</label>
-                    <input type="password" id="registerPassword" name="password" required minlength="6">
+                    <input type="password" id="registerPassword" name="password" required minlength="6" autocomplete="new-password">
                     <i class="fas fa-eye password-toggle" data-target="registerPassword"></i>
                     <div class="error-message">Senha deve ter pelo menos 6 caracteres</div>
                 </div>
 
                 <div class="form-group has-icon">
                     <label for="confirmPassword">Confirmar Senha</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
                     <i class="fas fa-eye password-toggle" data-target="confirmPassword"></i>
                     <div class="error-message">Senhas não coincidem</div>
                 </div>
@@ -445,7 +484,7 @@
             </div>
 
             <button id="googleRegister" class="btn btn-google">
-                <svg width="20" height="20" viewBox="0 0 24 24">
+                <svg class="google-icon" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -459,9 +498,12 @@
     <script>
         class BarberShopAuth {
             constructor() {
-                this.initializeEventListeners();
-                this.initializeGoogleAuth();
                 this.csrfToken = null;
+                this.retryCount = 0;
+                this.maxRetries = 3;
+                this.baseApiUrl = window.location.origin;
+                
+                this.initializeEventListeners();
                 this.fetchCSRFToken();
             }
 
@@ -480,16 +522,22 @@
                     toggle.addEventListener('click', (e) => this.togglePassword(e.target));
                 });
 
-                // Google login buttons
-                document.getElementById('googleLogin').addEventListener('click', () => this.handleGoogleAuth('login'));
-                document.getElementById('googleRegister').addEventListener('click', () => this.handleGoogleAuth('register'));
+                // Google register button (fallback)
+                document.getElementById('googleRegister').addEventListener('click', () => this.triggerGoogleSignIn());
 
                 // Phone mask
-                document.getElementById('registerPhone').addEventListener('input', (e) => this.maskPhone(e.target));
+                const phoneInput = document.getElementById('registerPhone');
+                if (phoneInput) {
+                    phoneInput.addEventListener('input', (e) => this.maskPhone(e.target));
+                }
 
                 // Password confirmation validation
                 document.getElementById('confirmPassword').addEventListener('input', this.validatePasswordMatch.bind(this));
                 document.getElementById('registerPassword').addEventListener('input', this.validatePasswordMatch.bind(this));
+
+                // Real-time email validation
+                document.getElementById('loginEmail').addEventListener('blur', (e) => this.validateEmailField(e.target));
+                document.getElementById('registerEmail').addEventListener('blur', (e) => this.validateEmailField(e.target));
             }
 
             switchTab(tab) {
@@ -501,8 +549,15 @@
                 document.querySelectorAll('.form-section').forEach(section => section.classList.remove('active'));
                 document.getElementById(tab).classList.add('active');
 
-                // Clear any alerts
+                // Clear any alerts and form errors
                 this.hideAlert();
+                this.clearAllFormErrors();
+            }
+
+            clearAllFormErrors() {
+                document.querySelectorAll('.form-group.error').forEach(group => {
+                    group.classList.remove('error');
+                });
             }
 
             togglePassword(toggle) {
@@ -538,19 +593,71 @@
                 const confirmGroup = document.getElementById('confirmPassword').closest('.form-group');
 
                 if (confirmPassword && password !== confirmPassword) {
-                    confirmGroup.classList.add('error');
+                    this.setFieldError(confirmPassword, 'Senhas não coincidem');
                 } else {
-                    confirmGroup.classList.remove('error');
+                    this.clearFieldError(confirmPassword);
+                }
+            }
+
+            validateEmailField(emailInput) {
+                if (emailInput.value && !this.isValidEmail(emailInput.value)) {
+                    this.setFieldError(emailInput, 'E-mail inválido');
+                } else {
+                    this.clearFieldError(emailInput);
                 }
             }
 
             async fetchCSRFToken() {
                 try {
-                    const response = await fetch('/api/get-csrf-token.php');
+                    const response = await fetch(`${this.baseApiUrl}/api/get-csrf-token.php`, {
+                        method: 'GET',
+                        credentials: 'same-origin'
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
                     const data = await response.json();
-                    this.csrfToken = data.token;
+                    
+                    if (data.success && data.token) {
+                        this.csrfToken = data.token;
+                    } else {
+                        throw new Error('Token CSRF não encontrado na resposta');
+                    }
                 } catch (error) {
                     console.error('Erro ao obter token CSRF:', error);
+                    this.showAlert('Erro de segurança. Recarregue a página.', 'error');
+                }
+            }
+
+            async makeRequest(url, options = {}) {
+                const defaultOptions = {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                };
+
+                const mergedOptions = { ...defaultOptions, ...options };
+                
+                try {
+                    const response = await fetch(url, mergedOptions);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        return await response.json();
+                    } else {
+                        throw new Error('Resposta não é JSON válido');
+                    }
+                } catch (error) {
+                    console.error('Erro na requisição:', error);
+                    throw error;
                 }
             }
 
@@ -563,18 +670,20 @@
                 
                 if (!this.validateLoginForm(form)) return;
 
+                if (!this.csrfToken) {
+                    this.showAlert('Erro de segurança. Recarregue a página.', 'error');
+                    return;
+                }
+
                 this.setLoading(submitBtn, true);
                 this.hideAlert();
 
                 try {
                     formData.append('csrf_token', this.csrfToken);
                     
-                    const response = await fetch('../api/login.php', {
-                        method: 'POST',
+                    const data = await this.makeRequest(`${this.baseApiUrl}/api/login.php`, {
                         body: formData
                     });
-
-                    const data = await response.json();
 
                     if (data.success) {
                         this.showAlert('Login realizado com sucesso!', 'success');
@@ -584,7 +693,6 @@
                     } else {
                         this.showAlert(data.message || 'Erro ao fazer login', 'error');
                         if (data.blocked) {
-                            // Desabilitar formulário se IP foi bloqueado
                             form.querySelectorAll('input, button').forEach(el => el.disabled = true);
                         }
                     }
@@ -604,24 +712,25 @@
                 
                 if (!this.validateRegisterForm(form)) return;
 
+                if (!this.csrfToken) {
+                    this.showAlert('Erro de segurança. Recarregue a página.', 'error');
+                    return;
+                }
+
                 this.setLoading(submitBtn, true);
                 this.hideAlert();
 
                 try {
                     formData.append('csrf_token', this.csrfToken);
                     
-                    const response = await fetch('/api/register.php', {
-                        method: 'POST',
+                    const data = await this.makeRequest(`${this.baseApiUrl}/api/register.php`, {
                         body: formData
                     });
-
-                    const data = await response.json();
 
                     if (data.success) {
                         this.showAlert('Conta criada com sucesso!', 'success');
                         setTimeout(() => {
                             this.switchTab('login');
-                            // Preencher email no login
                             document.getElementById('loginEmail').value = formData.get('email');
                         }, 1500);
                     } else {
@@ -639,7 +748,6 @@
                 const email = form.querySelector('[name="email"]');
                 const password = form.querySelector('[name="password"]');
 
-                // Validar email
                 if (!email.value || !this.isValidEmail(email.value)) {
                     this.setFieldError(email, 'E-mail inválido');
                     isValid = false;
@@ -647,7 +755,6 @@
                     this.clearFieldError(email);
                 }
 
-                // Validar senha
                 if (!password.value) {
                     this.setFieldError(password, 'Senha é obrigatória');
                     isValid = false;
@@ -666,15 +773,13 @@
                 const password = form.querySelector('[name="password"]');
                 const confirmPassword = form.querySelector('[name="confirmPassword"]');
 
-                // Validar nome
-                if (!name.value.trim()) {
-                    this.setFieldError(name, 'Nome é obrigatório');
+                if (!name.value.trim() || name.value.trim().length < 2) {
+                    this.setFieldError(name, 'Nome deve ter pelo menos 2 caracteres');
                     isValid = false;
                 } else {
                     this.clearFieldError(name);
                 }
 
-                // Validar email
                 if (!email.value || !this.isValidEmail(email.value)) {
                     this.setFieldError(email, 'E-mail inválido');
                     isValid = false;
@@ -682,7 +787,6 @@
                     this.clearFieldError(email);
                 }
 
-                // Validar telefone (opcional, mas se preenchido deve ser válido)
                 if (phone.value && !this.isValidPhone(phone.value)) {
                     this.setFieldError(phone, 'Telefone inválido');
                     isValid = false;
@@ -690,7 +794,6 @@
                     this.clearFieldError(phone);
                 }
 
-                // Validar senha
                 if (!password.value || password.value.length < 6) {
                     this.setFieldError(password, 'Senha deve ter pelo menos 6 caracteres');
                     isValid = false;
@@ -698,7 +801,6 @@
                     this.clearFieldError(password);
                 }
 
-                // Validar confirmação de senha
                 if (password.value !== confirmPassword.value) {
                     this.setFieldError(confirmPassword, 'Senhas não coincidem');
                     isValid = false;
@@ -747,7 +849,6 @@
                 alert.textContent = message;
                 alert.style.display = 'block';
                 
-                // Auto hide after 5 seconds
                 setTimeout(() => this.hideAlert(), 5000);
             }
 
@@ -756,44 +857,87 @@
                 alert.style.display = 'none';
             }
 
-            // Google OAuth methods (simulado - você precisa implementar com Google APIs)
-            async initializeGoogleAuth() {
-                // Aqui você inicializaria o Google Sign-In
-                // gapi.load('auth2', () => {
-                //     gapi.auth2.init({
-                //         client_id: 'SEU_GOOGLE_CLIENT_ID'
-                //     });
-                // });
+            // Google OAuth Implementation
+            triggerGoogleSignIn() {
+                if (window.google && window.google.accounts) {
+                    window.google.accounts.id.prompt();
+                } else {
+                    this.showAlert('Google Sign-In não está disponível. Tente novamente.', 'error');
+                }
             }
 
-            async handleGoogleAuth(type) {
-                // Simulação do Google OAuth - substitua pela implementação real
-                this.showAlert('Funcionalidade do Google OAuth em desenvolvimento', 'error');
+            async handleGoogleAuth(googleUser) {
+                if (!this.csrfToken) {
+                    this.showAlert('Erro de segurança. Recarregue a página.', 'error');
+                    return;
+                }
+
+                try {
+                    const userData = {
+                        google_id: googleUser.sub,
+                        email: googleUser.email,
+                        name: googleUser.name,
+                        avatar: googleUser.picture || '',
+                        csrf_token: this.csrfToken
+                    };
+
+                    const data = await this.makeRequest(`${this.baseApiUrl}/api/google-auth.php`, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(userData)
+                    });
+
+                    if (data.success) {
+                        this.showAlert(data.message || 'Login realizado com sucesso!', 'success');
+                        setTimeout(() => {
+                            window.location.href = data.redirect || '/dashboard.php';
+                        }, 1500);
+                    } else {
+                        this.showAlert(data.message || 'Erro ao fazer login com Google', 'error');
+                    }
+                } catch (error) {
+                    this.showAlert('Erro ao processar login do Google', 'error');
+                }
+            }
+        }
+
+        // Global function for Google Sign-In callback
+        function handleGoogleLogin(response) {
+            try {
+                // Decode the JWT token
+                const payload = JSON.parse(atob(response.credential.split('.')[1]));
                 
-                // Implementação real seria algo como:
-                // const authInstance = gapi.auth2.getAuthInstance();
-                // const user = await authInstance.signIn();
-                // const profile = user.getBasicProfile();
-                // 
-                // const userData = {
-                //     google_id: user.getId(),
-                //     email: profile.getEmail(),
-                //     name: profile.getName(),
-                //     avatar: profile.getImageUrl(),
-                //     csrf_token: this.csrfToken
-                // };
-                //
-                // const response = await fetch('/api/google-auth.php', {
-                //     method: 'POST',
-                //     headers: { 'Content-Type': 'application/json' },
-                //     body: JSON.stringify(userData)
-                // });
+                // Get the auth instance
+                const authInstance = window.barberShopAuth;
+                if (authInstance) {
+                    authInstance.handleGoogleAuth(payload);
+                }
+            } catch (error) {
+                console.error('Erro ao processar resposta do Google:', error);
+                if (window.barberShopAuth) {
+                    window.barberShopAuth.showAlert('Erro ao processar login do Google', 'error');
+                }
             }
         }
 
         // Initialize the authentication system when the page loads
         document.addEventListener('DOMContentLoaded', () => {
-            new BarberShopAuth();
+            window.barberShopAuth = new BarberShopAuth();
+        });
+
+        // Handle Google Sign-In library load
+        window.addEventListener('load', () => {
+            // Initialize Google Sign-In if available
+            if (window.google && window.google.accounts) {
+                window.google.accounts.id.initialize({
+                    client_id: "SEU_GOOGLE_CLIENT_ID.apps.googleusercontent.com", // Substitua pelo seu Client ID
+                    callback: handleGoogleLogin,
+                    auto_select: false,
+                    cancel_on_tap_outside: true
+                });
+            }
         });
     </script>
 </body>
