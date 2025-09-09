@@ -4,7 +4,7 @@ class Database {
     private static $instance = null;
     private $connection;
     
-    
+    // Configurações do banco de dados
     private $host = 'localhost';
     private $port = '3306';
     private $database = 'barbershop';

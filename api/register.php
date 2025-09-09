@@ -8,7 +8,7 @@ require_once '../security/Security.php';
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -82,7 +82,7 @@ try {
     }
     
     // Usar transação para garantir consistência
-    $db->transaction(function($db) use ($name, $email, $phone, $password, $security, $ip) {
+    $userId = $db->transaction(function($db) use ($name, $email, $phone, $password, $security, $ip) {
         // Hash da senha
         $passwordHash = password_hash($password, PASSWORD_ARGON2ID, [
             'memory_cost' => 65536,
@@ -101,7 +101,7 @@ try {
         // Log de criação de conta
         $security->logSecurity($userId, 'account_created', $ip, [
             'email' => $email,
-            'registration_method' => 'traditional'
+            'registration_method' => 'standard'
         ], 'info');
         
         return $userId;
@@ -109,7 +109,8 @@ try {
     
     echo json_encode([
         'success' => true,
-        'message' => 'Conta criada com sucesso! Faça login para continuar.'
+        'message' => 'Conta criada com sucesso! Faça login para continuar.',
+        'user_id' => $userId
     ]);
     
 } catch (Exception $e) {

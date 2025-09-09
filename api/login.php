@@ -2,8 +2,8 @@
 // api/login.php
 session_start();
 
-require_once '../config/config.php';
-require_once '../config/security.php';
+require_once '../config/database.php';
+require_once '../security/Security.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -69,7 +69,7 @@ try {
     
     // Buscar usuário no banco
     $stmt = $db->query("
-        SELECT id, email, password, name, is_active, created_at, google_id
+        SELECT id, email, password, name, is_active, created_at
         FROM users 
         WHERE email = ? AND is_active = 1
     ", [$email]);
@@ -80,15 +80,6 @@ try {
         // Registrar tentativa de login falhada
         $security->recordFailedLogin($ip, $email);
         echo json_encode(['error' => true, 'message' => 'E-mail ou senha incorretos']);
-        exit;
-    }
-    
-    // Verificar se é conta do Google
-    if ($user['google_id']) {
-        echo json_encode([
-            'error' => true, 
-            'message' => 'Esta conta foi criada com Google. Use "Continuar com Google"'
-        ]);
         exit;
     }
     
