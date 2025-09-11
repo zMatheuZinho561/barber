@@ -1,3 +1,16 @@
+<?php
+session_start();
+require_once 'models/Servico.php';
+
+// Verificar se usuário está logado
+$usuarioLogado = isset($_SESSION['logado']) && $_SESSION['logado'] === true;
+$usuarioNome = $_SESSION['usuario_nome'] ?? '';
+$usuarioEmail = $_SESSION['usuario_email'] ?? '';
+
+// Buscar serviços
+$servicoModel = new Servico();
+$servicos = $servicoModel->listarTodos();
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -123,6 +136,33 @@
             transform: translateY(-2px);
             box-shadow: 0 15px 30px rgba(245, 158, 11, 0.4);
         }
+
+        /* Fix para o conflito de layout */
+        @media (max-width: 768px) {
+            .user-menu-container {
+                position: relative;
+                width: 100%;
+            }
+            
+            .user-menu-buttons {
+                flex-direction: column;
+                gap: 0.75rem;
+                width: 100%;
+            }
+            
+            .user-menu-buttons > * {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .user-menu-container {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+            }
+        }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
@@ -151,65 +191,69 @@
                     <a href="#contato" class="text-white hover:text-secondary transition duration-300 font-medium">Contato</a>
                 </div>
                 
-                <!-- Botões de Usuário -->
-                <div class="flex items-center space-x-4">
-                    <!-- Se logado -->
-                    <div class="hidden" id="userLoggedIn">
-                        <div class="relative">
-                            <button id="userMenuButton" class="flex items-center space-x-3 text-white hover:text-secondary transition duration-300 bg-white/10 px-4 py-2 rounded-full glass-effect">
-                                <div class="w-8 h-8 bg-gradient-to-br from-secondary to-gold rounded-full flex items-center justify-center">
-                                    <i class="fas fa-user text-white text-sm"></i>
+                <!-- Botões de Usuário - Layout Corrigido -->
+                <div class="user-menu-container">
+                    <?php if ($usuarioLogado): ?>
+                        <!-- Se logado -->
+                        <div class="user-menu-buttons flex items-center gap-4">
+                            <!-- Dropdown do usuário -->
+                            <div class="relative">
+                                <button id="userMenuButton" class="flex items-center space-x-3 text-white hover:text-secondary transition duration-300 bg-white/10 px-4 py-2 rounded-full glass-effect">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-secondary to-gold rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user text-white text-sm"></i>
+                                    </div>
+                                    <span class="hidden lg:block font-medium max-w-32 truncate"><?= htmlspecialchars($usuarioNome) ?></span>
+                                    <i class="fas fa-chevron-down text-xs"></i>
+                                </button>
+                                
+                                <!-- Dropdown Moderno -->
+                                <div id="userDropdown" class="absolute right-0 mt-3 w-64 glass-effect rounded-2xl shadow-2xl py-2 hidden transform opacity-0 scale-95 transition-all duration-200">
+                                    <div class="px-4 py-3 border-b border-white/10">
+                                        <p class="text-white font-medium truncate"><?= htmlspecialchars($usuarioNome) ?></p>
+                                        <p class="text-gray-300 text-sm truncate"><?= htmlspecialchars($usuarioEmail) ?></p>
+                                    </div>
+                                    <a href="#" class="flex items-center px-4 py-3 text-white hover:bg-white/10 transition duration-200">
+                                        <i class="fas fa-user-circle mr-3 text-secondary"></i>
+                                        Meu Perfil
+                                    </a>
+                                    <a href="#" class="flex items-center px-4 py-3 text-white hover:bg-white/10 transition duration-200">
+                                        <i class="fas fa-calendar-alt mr-3 text-secondary"></i>
+                                        Agendamentos
+                                    </a>
+                                    <a href="#" class="flex items-center px-4 py-3 text-white hover:bg-white/10 transition duration-200">
+                                        <i class="fas fa-cog mr-3 text-secondary"></i>
+                                        Configurações
+                                    </a>
+                                    <div class="border-t border-white/10 mt-2"></div>
+                                    <a href="#" onclick="logout()" class="flex items-center px-4 py-3 text-red-400 hover:bg-white/10 transition duration-200">
+                                        <i class="fas fa-sign-out-alt mr-3"></i>
+                                        Sair
+                                    </a>
                                 </div>
-                                <span class="hidden md:block font-medium">João Silva</span>
-                                <i class="fas fa-chevron-down text-xs"></i>
-                            </button>
-                            
-                            <!-- Dropdown Moderno -->
-                            <div id="userDropdown" class="absolute right-0 mt-3 w-64 glass-effect rounded-2xl shadow-2xl py-2 hidden transform opacity-0 scale-95 transition-all duration-200">
-                                <div class="px-4 py-3 border-b border-white/10">
-                                    <p class="text-white font-medium">João Silva</p>
-                                    <p class="text-gray-300 text-sm">joao@email.com</p>
-                                </div>
-                                <a href="#" class="flex items-center px-4 py-3 text-white hover:bg-white/10 transition duration-200">
-                                    <i class="fas fa-user-circle mr-3 text-secondary"></i>
-                                    Meu Perfil
-                                </a>
-                                <a href="#" class="flex items-center px-4 py-3 text-white hover:bg-white/10 transition duration-200">
-                                    <i class="fas fa-calendar-alt mr-3 text-secondary"></i>
-                                    Agendamentos
-                                </a>
-                                <a href="#" class="flex items-center px-4 py-3 text-white hover:bg-white/10 transition duration-200">
-                                    <i class="fas fa-cog mr-3 text-secondary"></i>
-                                    Configurações
-                                </a>
-                                <div class="border-t border-white/10 mt-2"></div>
-                                <a href="#" onclick="logout()" class="flex items-center px-4 py-3 text-red-400 hover:bg-white/10 transition duration-200">
-                                    <i class="fas fa-sign-out-alt mr-3"></i>
-                                    Sair
-                                </a>
                             </div>
+                            
+                            <!-- Botão Agendar -->
+                            <button onclick="mostrarModalAgendamento()" class="btn-primary px-4 lg:px-6 py-3 rounded-full font-semibold text-white relative overflow-hidden whitespace-nowrap">
+                                <i class="fas fa-calendar-plus mr-2"></i>
+                                <span class="hidden sm:inline">Agendar</span>
+                            </button>
                         </div>
-                        
-                        <button onclick="mostrarModalAgendamento()" class="btn-primary px-6 py-3 rounded-full font-semibold text-white relative overflow-hidden">
-                            <i class="fas fa-calendar-plus mr-2"></i>
-                            Agendar
-                        </button>
-                    </div>
-                    
-                    <!-- Se não logado -->
-                    <div class="flex items-center space-x-3" id="userNotLoggedIn">
-                        <button onclick="mostrarModalLogin()" class="text-white hover:text-secondary transition duration-300 font-medium">
-                            <i class="fas fa-sign-in-alt mr-2"></i>
-                            Entrar
-                        </button>
-                        <button onclick="mostrarModalRegistro()" class="btn-primary px-6 py-3 rounded-full font-semibold text-white relative overflow-hidden">
-                            <i class="fas fa-user-plus mr-2"></i>
-                            Cadastrar
-                        </button>
-                    </div>
+                    <?php else: ?>
+                        <!-- Se não logado -->
+                        <div class="flex items-center space-x-3">
+                            <button onclick="mostrarModalLogin()" class="text-white hover:text-secondary transition duration-300 font-medium">
+                                <i class="fas fa-sign-in-alt mr-2"></i>
+                                <span class="hidden sm:inline">Entrar</span>
+                            </button>
+                            <button onclick="mostrarModalRegistro()" class="btn-primary px-4 lg:px-6 py-3 rounded-full font-semibold text-white relative overflow-hidden">
+                                <i class="fas fa-user-plus mr-2"></i>
+                                <span class="hidden sm:inline">Cadastrar</span>
+                            </button>
+                        </div>
+                    <?php endif; ?>
                     
                     <!-- Menu Mobile -->
-                    <button class="md:hidden text-white hover:text-secondary" onclick="toggleMobileMenu()">
+                    <button class="md:hidden text-white hover:text-secondary ml-4" onclick="toggleMobileMenu()">
                         <i class="fas fa-bars text-xl"></i>
                     </button>
                 </div>
@@ -223,11 +267,28 @@
                 <a href="#servicos" class="block text-white hover:text-secondary transition duration-300 font-medium py-2">Serviços</a>
                 <a href="#sobre" class="block text-white hover:text-secondary transition duration-300 font-medium py-2">Sobre</a>
                 <a href="#contato" class="block text-white hover:text-secondary transition duration-300 font-medium py-2">Contato</a>
+                
+                <?php if ($usuarioLogado): ?>
+                    <div class="border-t border-white/10 pt-4">
+                        <div class="text-white mb-4">
+                            <p class="font-medium"><?= htmlspecialchars($usuarioNome) ?></p>
+                            <p class="text-sm text-gray-300"><?= htmlspecialchars($usuarioEmail) ?></p>
+                        </div>
+                        <button onclick="mostrarModalAgendamento()" class="w-full btn-primary py-3 rounded-full font-semibold text-white mb-3">
+                            <i class="fas fa-calendar-plus mr-2"></i>
+                            Agendar Horário
+                        </button>
+                        <button onclick="logout()" class="w-full bg-red-600 text-white py-3 rounded-full font-semibold">
+                            <i class="fas fa-sign-out-alt mr-2"></i>
+                            Sair
+                        </button>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </nav>
 
-    <!-- Hero Section Reimaginado -->
+    <!-- Hero Section -->
     <section id="home" class="hero-bg min-h-screen flex items-center justify-center text-white relative">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
             <div class="animate-slide-up">
@@ -240,10 +301,17 @@
                     ambiente sofisticado e produtos premium.
                 </p>
                 <div class="flex flex-col sm:flex-row gap-6 justify-center items-center">
-                    <button onclick="mostrarModalRegistro()" class="btn-primary px-10 py-4 rounded-full text-xl font-bold text-white relative overflow-hidden group">
-                        <i class="fas fa-rocket mr-3"></i>
-                        Começar Agora
-                    </button>
+                    <?php if (!$usuarioLogado): ?>
+                        <button onclick="mostrarModalRegistro()" class="btn-primary px-10 py-4 rounded-full text-xl font-bold text-white relative overflow-hidden group">
+                            <i class="fas fa-rocket mr-3"></i>
+                            Começar Agora
+                        </button>
+                    <?php else: ?>
+                        <button onclick="mostrarModalAgendamento()" class="btn-primary px-10 py-4 rounded-full text-xl font-bold text-white relative overflow-hidden group">
+                            <i class="fas fa-calendar-plus mr-3"></i>
+                            Agendar Agora
+                        </button>
+                    <?php endif; ?>
                     <button onclick="scrollToServices()" class="border-2 border-white/30 glass-effect text-white px-10 py-4 rounded-full text-xl font-bold hover:border-secondary hover:bg-secondary/10 transition duration-300">
                         <i class="fas fa-cut mr-3"></i>
                         Ver Serviços
@@ -278,89 +346,123 @@
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Serviço 1 -->
-                <div class="service-card bg-white rounded-3xl shadow-lg overflow-hidden group">
-                    <div class="h-64 bg-gradient-to-br from-primary via-dark to-primary flex items-center justify-center relative overflow-hidden">
-                        <div class="absolute inset-0 bg-black/20"></div>
-                        <i class="fas fa-cut text-6xl text-secondary relative z-10 group-hover:scale-110 transition duration-500"></i>
-                        <div class="absolute top-4 right-4 bg-secondary/20 glass-effect px-3 py-1 rounded-full">
-                            <span class="text-white text-sm font-medium">Premium</span>
+                <?php if (empty($servicos)): ?>
+                    <!-- Serviços padrão se não houver no banco -->
+                    <div class="service-card bg-white rounded-3xl shadow-lg overflow-hidden group">
+                        <div class="h-64 bg-gradient-to-br from-primary via-dark to-primary flex items-center justify-center relative overflow-hidden">
+                            <div class="absolute inset-0 bg-black/20"></div>
+                            <i class="fas fa-cut text-6xl text-secondary relative z-10 group-hover:scale-110 transition duration-500"></i>
+                            <div class="absolute top-4 right-4 bg-secondary/20 glass-effect px-3 py-1 rounded-full">
+                                <span class="text-white text-sm font-medium">Premium</span>
+                            </div>
+                        </div>
+                        <div class="p-8">
+                            <h3 class="text-2xl font-bold text-primary mb-3">Corte Clássico</h3>
+                            <p class="text-gray-600 mb-6 leading-relaxed">
+                                Corte tradicional com acabamento impecável, incluindo lavagem e finalização com produtos premium.
+                            </p>
+                            <div class="flex justify-between items-center mb-6">
+                                <span class="text-3xl font-bold gradient-text">R$ 45,00</span>
+                                <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    45min
+                                </span>
+                            </div>
+                            <button onclick="agendarServico(1)" class="w-full bg-primary text-white py-3 rounded-2xl hover:bg-dark transition duration-300 font-semibold group-hover:bg-secondary">
+                                <i class="fas fa-calendar-plus mr-2"></i>
+                                Agendar Serviço
+                            </button>
                         </div>
                     </div>
-                    <div class="p-8">
-                        <h3 class="text-2xl font-bold text-primary mb-3">Corte Clássico</h3>
-                        <p class="text-gray-600 mb-6 leading-relaxed">
-                            Corte tradicional com acabamento impecável, incluindo lavagem e finalização com produtos premium.
-                        </p>
-                        <div class="flex justify-between items-center mb-6">
-                            <span class="text-3xl font-bold gradient-text">R$ 45,00</span>
-                            <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                <i class="fas fa-clock mr-1"></i>
-                                45min
-                            </span>
-                        </div>
-                        <button onclick="agendarServico(1)" class="w-full bg-primary text-white py-3 rounded-2xl hover:bg-dark transition duration-300 font-semibold group-hover:bg-secondary">
-                            <i class="fas fa-calendar-plus mr-2"></i>
-                            Agendar Serviço
-                        </button>
-                    </div>
-                </div>
 
-                <!-- Serviço 2 -->
-                <div class="service-card bg-white rounded-3xl shadow-lg overflow-hidden group">
-                    <div class="h-64 bg-gradient-to-br from-primary via-dark to-primary flex items-center justify-center relative overflow-hidden">
-                        <div class="absolute inset-0 bg-black/20"></div>
-                        <i class="fas fa-magic text-6xl text-secondary relative z-10 group-hover:scale-110 transition duration-500"></i>
-                        <div class="absolute top-4 right-4 bg-accent/20 glass-effect px-3 py-1 rounded-full">
-                            <span class="text-white text-sm font-medium">Exclusivo</span>
+                    <div class="service-card bg-white rounded-3xl shadow-lg overflow-hidden group">
+                        <div class="h-64 bg-gradient-to-br from-primary via-dark to-primary flex items-center justify-center relative overflow-hidden">
+                            <div class="absolute inset-0 bg-black/20"></div>
+                            <i class="fas fa-magic text-6xl text-secondary relative z-10 group-hover:scale-110 transition duration-500"></i>
+                            <div class="absolute top-4 right-4 bg-accent/20 glass-effect px-3 py-1 rounded-full">
+                                <span class="text-white text-sm font-medium">Exclusivo</span>
+                            </div>
+                        </div>
+                        <div class="p-8">
+                            <h3 class="text-2xl font-bold text-primary mb-3">Barba + Bigode</h3>
+                            <p class="text-gray-600 mb-6 leading-relaxed">
+                                Aparagem e modelagem profissional da barba e bigode com produtos especializados e toalha quente.
+                            </p>
+                            <div class="flex justify-between items-center mb-6">
+                                <span class="text-3xl font-bold gradient-text">R$ 35,00</span>
+                                <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    30min
+                                </span>
+                            </div>
+                            <button onclick="agendarServico(2)" class="w-full bg-primary text-white py-3 rounded-2xl hover:bg-dark transition duration-300 font-semibold group-hover:bg-secondary">
+                                <i class="fas fa-calendar-plus mr-2"></i>
+                                Agendar Serviço
+                            </button>
                         </div>
                     </div>
-                    <div class="p-8">
-                        <h3 class="text-2xl font-bold text-primary mb-3">Barba + Bigode</h3>
-                        <p class="text-gray-600 mb-6 leading-relaxed">
-                            Aparagem e modelagem profissional da barba e bigode com produtos especializados e toalha quente.
-                        </p>
-                        <div class="flex justify-between items-center mb-6">
-                            <span class="text-3xl font-bold gradient-text">R$ 35,00</span>
-                            <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                <i class="fas fa-clock mr-1"></i>
-                                30min
-                            </span>
-                        </div>
-                        <button onclick="agendarServico(2)" class="w-full bg-primary text-white py-3 rounded-2xl hover:bg-dark transition duration-300 font-semibold group-hover:bg-secondary">
-                            <i class="fas fa-calendar-plus mr-2"></i>
-                            Agendar Serviço
-                        </button>
-                    </div>
-                </div>
 
-                <!-- Serviço 3 -->
-                <div class="service-card bg-white rounded-3xl shadow-lg overflow-hidden group">
-                    <div class="h-64 bg-gradient-to-br from-primary via-dark to-primary flex items-center justify-center relative overflow-hidden">
-                        <div class="absolute inset-0 bg-black/20"></div>
-                        <i class="fas fa-crown text-6xl text-secondary relative z-10 group-hover:scale-110 transition duration-500"></i>
-                        <div class="absolute top-4 right-4 bg-gold/20 glass-effect px-3 py-1 rounded-full">
-                            <span class="text-white text-sm font-medium">VIP</span>
+                    <div class="service-card bg-white rounded-3xl shadow-lg overflow-hidden group">
+                        <div class="h-64 bg-gradient-to-br from-primary via-dark to-primary flex items-center justify-center relative overflow-hidden">
+                            <div class="absolute inset-0 bg-black/20"></div>
+                            <i class="fas fa-crown text-6xl text-secondary relative z-10 group-hover:scale-110 transition duration-500"></i>
+                            <div class="absolute top-4 right-4 bg-gold/20 glass-effect px-3 py-1 rounded-full">
+                                <span class="text-white text-sm font-medium">VIP</span>
+                            </div>
+                        </div>
+                        <div class="p-8">
+                            <h3 class="text-2xl font-bold text-primary mb-3">Pacote Completo</h3>
+                            <p class="text-gray-600 mb-6 leading-relaxed">
+                                Experiência completa: corte, barba, sobrancelha, lavagem e relaxamento. O melhor que oferecemos.
+                            </p>
+                            <div class="flex justify-between items-center mb-6">
+                                <span class="text-3xl font-bold gradient-text">R$ 75,00</span>
+                                <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    90min
+                                </span>
+                            </div>
+                            <button onclick="agendarServico(3)" class="w-full bg-primary text-white py-3 rounded-2xl hover:bg-dark transition duration-300 font-semibold group-hover:bg-secondary">
+                                <i class="fas fa-calendar-plus mr-2"></i>
+                                Agendar Serviço
+                            </button>
                         </div>
                     </div>
-                    <div class="p-8">
-                        <h3 class="text-2xl font-bold text-primary mb-3">Pacote Completo</h3>
-                        <p class="text-gray-600 mb-6 leading-relaxed">
-                            Experiência completa: corte, barba, sobrancelha, lavagem e relaxamento. O melhor que oferecemos.
-                        </p>
-                        <div class="flex justify-between items-center mb-6">
-                            <span class="text-3xl font-bold gradient-text">R$ 75,00</span>
-                            <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                <i class="fas fa-clock mr-1"></i>
-                                90min
-                            </span>
+                <?php else: ?>
+                    <!-- Serviços do banco de dados -->
+                    <?php foreach ($servicos as $servico): ?>
+                        <div class="service-card bg-white rounded-3xl shadow-lg overflow-hidden group">
+                            <div class="h-64 bg-gradient-to-br from-primary via-dark to-primary flex items-center justify-center relative overflow-hidden">
+                                <div class="absolute inset-0 bg-black/20"></div>
+                                <?php if ($servico['imagem']): ?>
+                                    <img src="<?= htmlspecialchars($servico['imagem']) ?>" alt="<?= htmlspecialchars($servico['nome']) ?>" class="w-full h-full object-cover">
+                                <?php else: ?>
+                                    <i class="fas fa-cut text-6xl text-secondary relative z-10 group-hover:scale-110 transition duration-500"></i>
+                                <?php endif; ?>
+                                <div class="absolute top-4 right-4 bg-secondary/20 glass-effect px-3 py-1 rounded-full">
+                                    <span class="text-white text-sm font-medium">Premium</span>
+                                </div>
+                            </div>
+                            <div class="p-8">
+                                <h3 class="text-2xl font-bold text-primary mb-3"><?= htmlspecialchars($servico['nome']) ?></h3>
+                                <p class="text-gray-600 mb-6 leading-relaxed">
+                                    <?= htmlspecialchars($servico['descricao']) ?>
+                                </p>
+                                <div class="flex justify-between items-center mb-6">
+                                    <span class="text-3xl font-bold gradient-text">R$ <?= number_format($servico['preco'], 2, ',', '.') ?></span>
+                                    <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        <?= $servico['duracao'] ?>min
+                                    </span>
+                                </div>
+                                <button onclick="agendarServico(<?= $servico['id'] ?>)" class="w-full bg-primary text-white py-3 rounded-2xl hover:bg-dark transition duration-300 font-semibold group-hover:bg-secondary">
+                                    <i class="fas fa-calendar-plus mr-2"></i>
+                                    Agendar Serviço
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="agendarServico(3)" class="w-full bg-primary text-white py-3 rounded-2xl hover:bg-dark transition duration-300 font-semibold group-hover:bg-secondary">
-                            <i class="fas fa-calendar-plus mr-2"></i>
-                            Agendar Serviço
-                        </button>
-                    </div>
-                </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </div>
     </section>
@@ -466,6 +568,240 @@
             </div>
             
             <button onclick="fecharModal('modalRegistro')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition duration-300">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Agendamento Atualizado -->
+    <div id="modalAgendamento" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-3xl max-w-4xl w-full mx-4 shadow-2xl transform scale-95 opacity-0 transition-all duration-300" id="agendamentoModal">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-gradient-to-br from-secondary to-gold rounded-2xl flex items-center justify-center mx-auto mb-4 animate-glow">
+                    <i class="fas fa-calendar-plus text-white text-2xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-primary">Agendar Horário</h2>
+                <p class="text-gray-600 mt-2">Escolha o barbeiro, serviço, data e horário desejado</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Formulário Principal -->
+                <div class="lg:col-span-2">
+                    <form id="formAgendamento" class="space-y-6">
+                        
+                        <!-- Seleção de Barbeiro -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-user-tie text-secondary mr-2"></i>
+                                Escolha o Barbeiro
+                            </label>
+                            <div id="barbeirosContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Barbeiros carregados dinamicamente -->
+                                <div class="animate-pulse">
+                                    <div class="bg-gray-200 rounded-2xl p-4 h-24"></div>
+                                </div>
+                                <div class="animate-pulse">
+                                    <div class="bg-gray-200 rounded-2xl p-4 h-24"></div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="barbeiro_id" id="barbeiroSelecionado" required>
+                        </div>
+
+                        <!-- Seleção de Serviço -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-cut text-secondary mr-2"></i>
+                                Serviço
+                            </label>
+                            <select name="servico_id" required 
+                                    class="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-secondary focus:border-transparent transition duration-300"
+                                    onchange="atualizarResumoServico()">
+                                <option value="">Selecione um serviço</option>
+                                <?php foreach ($servicos as $servico): ?>
+                                    <option value="<?= $servico['id'] ?>" data-duracao="<?= $servico['duracao'] ?>">
+                                        <?= htmlspecialchars($servico['nome']) ?> - R$ <?= number_format($servico['preco'], 2, ',', '.') ?> (<?= $servico['duracao'] ?>min)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <!-- Data -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-calendar text-secondary mr-2"></i>
+                                Data
+                            </label>
+                            <input type="date" name="data" required 
+                                   min="<?= date('Y-m-d') ?>"
+                                   max="<?= date('Y-m-d', strtotime('+30 days')) ?>"
+                                   class="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-secondary focus:border-transparent transition duration-300">
+                        </div>
+                        
+                        <!-- Horários Disponíveis -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-4">
+                                <i class="fas fa-clock text-secondary mr-2"></i>
+                                Horários Disponíveis
+                                <span id="loadingHorarios" class="text-xs text-gray-500 ml-2 hidden">
+                                    <i class="fas fa-spinner fa-spin"></i> Carregando...
+                                </span>
+                            </label>
+                            <div id="horariosDisponiveis" class="grid grid-cols-3 md:grid-cols-4 gap-3 min-h-[120px]">
+                                <div class="col-span-full text-center text-gray-500 py-8">
+                                    <i class="fas fa-info-circle mb-2 text-2xl"></i>
+                                    <p>Selecione um barbeiro, serviço e data para ver os horários disponíveis</p>
+                                </div>
+                            </div>
+                            <input type="hidden" name="horario" id="horarioSelecionado" required>
+                        </div>
+                        
+                        <!-- Observações -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-comment text-secondary mr-2"></i>
+                                Observações (opcional)
+                            </label>
+                            <textarea name="observacoes" rows="3" 
+                                      class="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-secondary focus:border-transparent transition duration-300 resize-none"
+                                      placeholder="Alguma observação especial para seu atendimento..."></textarea>
+                        </div>
+                        
+                        <!-- Botões -->
+                        <div class="flex space-x-4 pt-4">
+                            <button type="button" onclick="fecharModal('modalAgendamento')" 
+                                    class="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-2xl font-bold hover:border-gray-400 hover:bg-gray-50 transition duration-300">
+                                <i class="fas fa-times mr-2"></i>
+                                Cancelar
+                            </button>
+                            <button type="submit" 
+                                    class="flex-1 btn-primary px-6 py-4 rounded-2xl font-bold text-white relative overflow-hidden">
+                                <i class="fas fa-calendar-check mr-2"></i>
+                                Confirmar Agendamento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Resumo do Agendamento -->
+                <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-3xl">
+                    <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-receipt text-secondary mr-3"></i>
+                        Resumo
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <!-- Barbeiro selecionado -->
+                        <div id="resumoBarbeiro" class="hidden bg-white p-4 rounded-2xl border border-gray-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gradient-to-br from-secondary to-gold rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user-tie text-white"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Barbeiro</p>
+                                    <p class="font-bold text-gray-800" id="resumoBarbeiroNome">-</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Serviço selecionado -->
+                        <div id="resumoServico" class="hidden bg-white p-4 rounded-2xl border border-gray-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gradient-to-br from-primary to-dark rounded-full flex items-center justify-center">
+                                    <i class="fas fa-cut text-white"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm text-gray-600">Serviço</p>
+                                    <p class="font-bold text-gray-800" id="resumoServicoNome">-</p>
+                                    <p class="text-sm text-gray-600">
+                                        <span id="resumoServicoPreco">R$ 0,00</span> • 
+                                        <span id="resumoServicoDuracao">0min</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Data e horário -->
+                        <div id="resumoDateTime" class="hidden bg-white p-4 rounded-2xl border border-gray-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-calendar-check text-white"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Agendamento</p>
+                                    <p class="font-bold text-gray-800" id="resumoData">-</p>
+                                    <p class="text-sm text-gray-600" id="resumoHorario">-</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Total -->
+                        <div id="resumoTotal" class="hidden bg-gradient-to-r from-secondary to-gold p-4 rounded-2xl text-white">
+                            <div class="text-center">
+                                <p class="text-sm opacity-90">Total</p>
+                                <p class="text-2xl font-bold" id="resumoPrecoTotal">R$ 0,00</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Informações importantes -->
+                    <div class="mt-6 p-4 bg-blue-50 rounded-2xl border border-blue-200">
+                        <h4 class="text-sm font-bold text-blue-800 mb-2">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Informações Importantes
+                        </h4>
+                        <ul class="text-xs text-blue-700 space-y-1">
+                            <li>• Chegue 10 minutos antes do horário</li>
+                            <li>• Cancelamento até 2h antes</li>
+                            <li>• Não atendemos aos domingos</li>
+                            <li>• Pagamento no local</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="fecharModal('modalAgendamento')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition duration-300">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+    </div>border-gray-200 rounded-2xl focus:ring-2 focus:ring-secondary focus:border-transparent transition duration-300">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-4">Horários Disponíveis</label>
+                    <div id="horariosDisponiveis" class="grid grid-cols-3 md:grid-cols-4 gap-3">
+                        <!-- Horários serão carregados dinamicamente -->
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="09:00">09:00</button>
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="09:30">09:30</button>
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="10:00">10:00</button>
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="10:30">10:30</button>
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="11:00">11:00</button>
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="11:30">11:30</button>
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="14:00">14:00</button>
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="14:30">14:30</button>
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="15:00">15:00</button>
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="15:30">15:30</button>
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="16:00">16:00</button>
+                        <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300" data-horario="16:30">16:30</button>
+                    </div>
+                    <input type="hidden" name="horario" id="horarioSelecionado">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Observações (opcional)</label>
+                    <textarea name="observacoes" rows="3" 
+                              class="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-secondary focus:border-transparent transition duration-300"
+                              placeholder="Alguma observação especial para seu atendimento..."></textarea>
+                </div>
+                
+                <button type="submit" 
+                        class="w-full btn-primary py-4 rounded-2xl font-bold text-white text-lg relative overflow-hidden">
+                    <i class="fas fa-calendar-check mr-2"></i>
+                    Confirmar Agendamento
+                </button>
+            </form>
+            
+            <button onclick="fecharModal('modalAgendamento')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition duration-300">
                 <i class="fas fa-times text-2xl"></i>
             </button>
         </div>
@@ -584,6 +920,371 @@
     </footer>
 
     <script>
+        // Variáveis globais para o agendamento
+        let barbeirosDisponiveis = [];
+        let barbeiroSelecionadoId = null;
+
+        // Carregar barbeiros quando o modal abre
+        async function carregarBarbeiros() {
+            try {
+                const response = await fetch('api/agendamentos.php?acao=barbeiros');
+                const data = await response.json();
+                
+                if (data.success) {
+                    barbeirosDisponiveis = data.data;
+                    renderizarBarbeiros();
+                } else {
+                    mostrarToast('Erro ao carregar barbeiros', 'error');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarToast('Erro ao carregar barbeiros', 'error');
+            }
+        }
+
+        // Renderizar lista de barbeiros
+        function renderizarBarbeiros() {
+            const container = document.getElementById('barbeirosContainer');
+            
+            if (barbeirosDisponiveis.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center text-gray-500 py-4">
+                        <i class="fas fa-user-slash mb-2 text-2xl"></i>
+                        <p>Nenhum barbeiro disponível no momento</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = barbeirosDisponiveis.map(barbeiro => `
+                <div class="barbeiro-card bg-white border-2 border-gray-200 rounded-2xl p-4 cursor-pointer transition duration-300 hover:border-secondary hover:shadow-lg" 
+                     data-barbeiro-id="${barbeiro.id}" onclick="selecionarBarbeiro(${barbeiro.id}, '${barbeiro.nome}')">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-gradient-to-br from-secondary to-gold rounded-full flex items-center justify-center">
+                            <i class="fas fa-user-tie text-white"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-gray-800">${barbeiro.nome}</h4>
+                            <p class="text-sm text-gray-600">${barbeiro.especialidades || 'Especialista'}</p>
+                            <div class="flex items-center text-xs text-gray-500 mt-1">
+                                <i class="fas fa-clock mr-1"></i>
+                                ${barbeiro.horario_inicio} às ${barbeiro.horario_fim}
+                            </div>
+                        </div>
+                        <div class="w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center barbeiro-check">
+                            <i class="fas fa-check text-white text-xs hidden"></i>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Selecionar barbeiro
+        function selecionarBarbeiro(barbeiroId, barbeiroNome) {
+            // Remover seleção anterior
+            document.querySelectorAll('.barbeiro-card').forEach(card => {
+                card.classList.remove('border-secondary', 'bg-secondary/5');
+                card.classList.add('border-gray-200');
+                const check = card.querySelector('.barbeiro-check');
+                check.classList.remove('bg-secondary', 'border-secondary');
+                check.classList.add('border-gray-300');
+                check.querySelector('i').classList.add('hidden');
+            });
+            
+            // Adicionar seleção atual
+            const cardSelecionado = document.querySelector(`[data-barbeiro-id="${barbeiroId}"]`);
+            cardSelecionado.classList.remove('border-gray-200');
+            cardSelecionado.classList.add('border-secondary', 'bg-secondary/5');
+            
+            const check = cardSelecionado.querySelector('.barbeiro-check');
+            check.classList.remove('border-gray-300');
+            check.classList.add('bg-secondary', 'border-secondary');
+            check.querySelector('i').classList.remove('hidden');
+            
+            // Definir valores
+            barbeiroSelecionadoId = barbeiroId;
+            document.getElementById('barbeiroSelecionado').value = barbeiroId;
+            
+            // Atualizar resumo
+            document.getElementById('resumoBarbeiroNome').textContent = barbeiroNome;
+            document.getElementById('resumoBarbeiro').classList.remove('hidden');
+            
+            // Atualizar horários se já tiver data e serviço selecionados
+            atualizarHorariosAgendamento();
+        }
+
+        // Atualizar horários disponíveis
+        async function atualizarHorariosAgendamento() {
+            const barbeiroId = document.getElementById('barbeiroSelecionado').value;
+            const data = document.querySelector('input[name="data"]').value;
+            const servicoId = document.querySelector('select[name="servico_id"]').value;
+            
+            const horariosContainer = document.getElementById('horariosDisponiveis');
+            const loadingIndicator = document.getElementById('loadingHorarios');
+            
+            // Limpar seleção de horário anterior
+            document.getElementById('horarioSelecionado').value = '';
+            
+            if (!barbeiroId || !data) {
+                horariosContainer.innerHTML = `
+                    <div class="col-span-full text-center text-gray-500 py-8">
+                        <i class="fas fa-info-circle mb-2 text-2xl"></i>
+                        <p>Selecione um barbeiro e data para ver os horários disponíveis</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Mostrar loading
+            loadingIndicator.classList.remove('hidden');
+            horariosContainer.innerHTML = `
+                <div class="col-span-full text-center text-gray-500 py-8">
+                    <i class="fas fa-spinner fa-spin mb-2 text-2xl"></i>
+                    <p>Carregando horários disponíveis...</p>
+                </div>
+            `;
+            
+            try {
+                const params = new URLSearchParams({
+                    acao: 'horarios',
+                    barbeiro_id: barbeiroId,
+                    data: data
+                });
+                
+                if (servicoId) {
+                    params.append('servico_id', servicoId);
+                }
+                
+                const response = await fetch(`api/agendamentos.php?${params}`);
+                const result = await response.json();
+                
+                loadingIndicator.classList.add('hidden');
+                
+                if (result.success) {
+                    if (result.data.length === 0) {
+                        horariosContainer.innerHTML = `
+                            <div class="col-span-full text-center text-gray-500 py-8">
+                                <i class="fas fa-calendar-times mb-2 text-2xl text-red-400"></i>
+                                <p class="text-red-600 font-medium">${result.message || 'Nenhum horário disponível para esta data'}</p>
+                                <p class="text-sm mt-2">Tente escolher outra data</p>
+                            </div>
+                        `;
+                    } else {
+                        horariosContainer.innerHTML = result.data.map(horario => `
+                            <button type="button" class="horario-btn px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-700 hover:border-secondary hover:text-secondary transition duration-300 font-medium" 
+                                    data-horario="${horario}" onclick="selecionarHorarioAgendamento('${horario}')">
+                                ${horario}
+                            </button>
+                        `).join('');
+                    }
+                } else {
+                    horariosContainer.innerHTML = `
+                        <div class="col-span-full text-center text-red-500 py-8">
+                            <i class="fas fa-exclamation-triangle mb-2 text-2xl"></i>
+                            <p>${result.message}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                loadingIndicator.classList.add('hidden');
+                horariosContainer.innerHTML = `
+                    <div class="col-span-full text-center text-red-500 py-8">
+                        <i class="fas fa-exclamation-triangle mb-2 text-2xl"></i>
+                        <p>Erro ao carregar horários</p>
+                    </div>
+                `;
+                console.error('Erro:', error);
+            }
+        }
+
+        // Selecionar horário
+        function selecionarHorarioAgendamento(horario) {
+            // Remover seleção anterior
+            document.querySelectorAll('.horario-btn').forEach(btn => {
+                btn.classList.remove('border-secondary', 'text-secondary', 'bg-secondary/10');
+                btn.classList.add('border-gray-200', 'text-gray-700');
+            });
+            
+            // Adicionar seleção atual
+            const btnSelecionado = document.querySelector(`[data-horario="${horario}"]`);
+            btnSelecionado.classList.remove('border-gray-200', 'text-gray-700');
+            btnSelecionado.classList.add('border-secondary', 'text-secondary', 'bg-secondary/10');
+            
+            // Definir valor
+            document.getElementById('horarioSelecionado').value = horario;
+            
+            // Atualizar resumo
+            atualizarResumoDateTimeAgendamento();
+        }
+
+        // Atualizar resumo de data e horário
+        function atualizarResumoDateTimeAgendamento() {
+            const data = document.querySelector('input[name="data"]').value;
+            const horario = document.getElementById('horarioSelecionado').value;
+            
+            if (data && horario) {
+                const dataFormatada = new Date(data + 'T00:00:00').toLocaleDateString('pt-BR', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                document.getElementById('resumoData').textContent = dataFormatada;
+                document.getElementById('resumoHorario').textContent = `${horario}h`;
+                document.getElementById('resumoDateTime').classList.remove('hidden');
+            }
+        }
+
+        // Atualizar resumo do serviço
+        function atualizarResumoServico() {
+            const select = document.querySelector('select[name="servico_id"]');
+            const option = select.options[select.selectedIndex];
+            
+            if (select.value) {
+                const nome = option.textContent.split(' - ')[0];
+                const preco = option.textContent.match(/R\$ ([\d,]+)/)[1];
+                const duracao = option.dataset.duracao;
+                
+                document.getElementById('resumoServicoNome').textContent = nome;
+                document.getElementById('resumoServicoPreco').textContent = `R$ ${preco}`;
+                document.getElementById('resumoServicoDuracao').textContent = `${duracao}min`;
+                document.getElementById('resumoPrecoTotal').textContent = `R$ ${preco}`;
+                
+                document.getElementById('resumoServico').classList.remove('hidden');
+                document.getElementById('resumoTotal').classList.remove('hidden');
+                
+                // Atualizar horários quando serviço muda
+                atualizarHorariosAgendamento();
+            }
+        }
+
+        // Limpar todas as seleções do agendamento
+        function limparSelecoesAgendamento() {
+            // Limpar barbeiro
+            barbeiroSelecionadoId = null;
+            document.getElementById('barbeiroSelecionado').value = '';
+            document.querySelectorAll('.barbeiro-card').forEach(card => {
+                card.classList.remove('border-secondary', 'bg-secondary/5');
+                card.classList.add('border-gray-200');
+                const check = card.querySelector('.barbeiro-check');
+                if (check) {
+                    check.classList.remove('bg-secondary', 'border-secondary');
+                    check.classList.add('border-gray-300');
+                    check.querySelector('i').classList.add('hidden');
+                }
+            });
+            
+            // Limpar horário
+            document.getElementById('horarioSelecionado').value = '';
+            document.querySelectorAll('.horario-btn').forEach(btn => {
+                btn.classList.remove('border-secondary', 'text-secondary', 'bg-secondary/10');
+                btn.classList.add('border-gray-200', 'text-gray-700');
+            });
+            
+            // Limpar resumo
+            document.getElementById('resumoBarbeiro').classList.add('hidden');
+            document.getElementById('resumoServico').classList.add('hidden');
+            document.getElementById('resumoDateTime').classList.add('hidden');
+            document.getElementById('resumoTotal').classList.add('hidden');
+            
+            // Resetar horários
+            const horariosContainer = document.getElementById('horariosDisponiveis');
+            horariosContainer.innerHTML = `
+                <div class="col-span-full text-center text-gray-500 py-8">
+                    <i class="fas fa-info-circle mb-2 text-2xl"></i>
+                    <p>Selecione um barbeiro, serviço e data para ver os horários disponíveis</p>
+                </div>
+            `;
+        }
+
+        // Função para abrir modal de agendamento (atualizada)
+        function mostrarModalAgendamento() {
+            if (!usuarioLogado) {
+                mostrarToast('Você precisa fazer login primeiro!', 'warning');
+                setTimeout(() => mostrarModalLogin(), 1500);
+                return;
+            }
+            
+            mostrarModal('modalAgendamento', 'agendamentoModal');
+            
+            // Carregar barbeiros quando modal abre
+            setTimeout(() => {
+                carregarBarbeiros();
+            }, 100);
+        }
+
+        // Event listeners para o agendamento
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputDataAgendamento = document.querySelector('input[name="data"]');
+            if (inputDataAgendamento) {
+                inputDataAgendamento.addEventListener('change', function() {
+                    const data = new Date(this.value + 'T00:00:00');
+                    const diaSemana = data.getDay(); // 0 = domingo
+                    
+                    if (diaSemana === 0) {
+                        mostrarToast('Não atendemos aos domingos. Por favor, escolha outra data.', 'warning');
+                        this.value = '';
+                        return;
+                    }
+                    
+                    atualizarResumoDateTimeAgendamento();
+                    atualizarHorariosAgendamento();
+                });
+            }
+        });
+
+        // Submissão do formulário de agendamento (atualizada)
+        document.getElementById('formAgendamento').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            formData.append('acao', 'criar');
+            
+            // Validar se horário foi selecionado
+            if (!formData.get('horario')) {
+                mostrarToast('Por favor, selecione um horário!', 'warning');
+                return;
+            }
+            
+            // Validar se barbeiro foi selecionado
+            if (!formData.get('barbeiro_id')) {
+                mostrarToast('Por favor, selecione um barbeiro!', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await fetch('api/agendamentos.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    mostrarToast('Agendamento realizado com sucesso!', 'success');
+                    fecharModal('modalAgendamento');
+                    
+                    // Limpar formulário
+                    this.reset();
+                    limparSelecoesAgendamento();
+                    
+                    // Mostrar opção de ver agendamentos
+                    setTimeout(() => {
+                        if (confirm('Deseja ver seus agendamentos?')) {
+                            window.open('meus-agendamentos.php', '_blank');
+                        }
+                    }, 2000);
+                } else {
+                    mostrarToast(data.message, 'error');
+                }
+                
+            } catch (error) {
+                mostrarToast('Erro ao realizar agendamento', 'error');
+                console.error('Erro:', error);
+            }
+        });
+
         // Controle do dropdown do usuário
         document.addEventListener('DOMContentLoaded', function() {
             const userMenuButton = document.getElementById('userMenuButton');
@@ -592,6 +1293,7 @@
             if (userMenuButton && userDropdown) {
                 userMenuButton.addEventListener('click', function(e) {
                     e.preventDefault();
+                    e.stopPropagation();
                     const isHidden = userDropdown.classList.contains('hidden');
                     
                     if (isHidden) {
@@ -631,6 +1333,9 @@
                     navbar.style.background = 'rgba(15, 23, 42, 0.9)';
                 }
             });
+
+            // Configurar seleção de horários
+            configurarHorarios();
         });
 
         // Toggle mobile menu
@@ -640,9 +1345,9 @@
         }
 
         // Funções dos modais
-        function mostrarModalLogin() {
-            const modal = document.getElementById('modalLogin');
-            const modalContent = document.getElementById('loginModal');
+        function mostrarModal(modalId, modalContentId) {
+            const modal = document.getElementById(modalId);
+            const modalContent = document.getElementById(modalContentId);
             
             modal.classList.remove('hidden');
             modal.classList.add('flex');
@@ -653,17 +1358,21 @@
             }, 10);
         }
 
+        function mostrarModalLogin() {
+            mostrarModal('modalLogin', 'loginModal');
+        }
+
         function mostrarModalRegistro() {
-            const modal = document.getElementById('modalRegistro');
-            const modalContent = document.getElementById('registroModal');
-            
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            
-            setTimeout(() => {
-                modalContent.classList.remove('scale-95', 'opacity-0');
-                modalContent.classList.add('scale-100', 'opacity-100');
-            }, 10);
+            mostrarModal('modalRegistro', 'registroModal');
+        }
+
+        function mostrarModalAgendamento() {
+            if (!usuarioLogado) {
+                mostrarToast('Você precisa fazer login primeiro!', 'warning');
+                setTimeout(() => mostrarModalLogin(), 1500);
+                return;
+            }
+            mostrarModal('modalAgendamento', 'agendamentoModal');
         }
 
         function fecharModal(modalId) {
@@ -683,6 +1392,31 @@
             document.getElementById('servicos').scrollIntoView({ behavior: 'smooth' });
         }
 
+        // Configurar seleção de horários
+        function configurarHorarios() {
+            const horarioBtns = document.querySelectorAll('.horario-btn');
+            const horarioInput = document.getElementById('horarioSelecionado');
+            
+            horarioBtns.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Remover seleção anterior
+                    horarioBtns.forEach(b => {
+                        b.classList.remove('border-secondary', 'text-secondary', 'bg-secondary/10');
+                        b.classList.add('border-gray-200', 'text-gray-700');
+                    });
+                    
+                    // Adicionar seleção atual
+                    this.classList.remove('border-gray-200', 'text-gray-700');
+                    this.classList.add('border-secondary', 'text-secondary', 'bg-secondary/10');
+                    
+                    // Definir valor no input hidden
+                    horarioInput.value = this.dataset.horario;
+                });
+            });
+        }
+
         // Toast de notificação
         function mostrarToast(mensagem, tipo = 'success') {
             const toast = document.getElementById('toast');
@@ -694,10 +1428,10 @@
             
             // Definir cor e ícone baseado no tipo
             if (tipo === 'error') {
-                iconContainer.className = iconContainer.className.replace('bg-green-500', 'bg-red-500');
+                iconContainer.className = iconContainer.className.replace(/bg-\w+-500/, 'bg-red-500');
                 icon.className = 'fas fa-times text-white';
             } else if (tipo === 'warning') {
-                iconContainer.className = iconContainer.className.replace('bg-green-500', 'bg-yellow-500');
+                iconContainer.className = iconContainer.className.replace(/bg-\w+-500/, 'bg-yellow-500');
                 icon.className = 'fas fa-exclamation text-white';
             } else {
                 iconContainer.className = iconContainer.className.replace(/bg-\w+-500/, 'bg-green-500');
@@ -724,20 +1458,27 @@
             e.preventDefault();
             
             const formData = new FormData(this);
+            formData.append('acao', 'login');
             
             try {
-                // Simular resposta de API
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                const response = await fetch('api/auth.php', {
+                    method: 'POST',
+                    body: formData
+                });
                 
-                // Simular login bem-sucedido
-                mostrarToast('Login realizado com sucesso!', 'success');
-                fecharModal('modalLogin');
+                const data = await response.json();
                 
-                // Simular mudança de estado do usuário
-                setTimeout(() => {
-                    document.getElementById('userNotLoggedIn').classList.add('hidden');
-                    document.getElementById('userLoggedIn').classList.remove('hidden');
-                }, 1000);
+                if (data.success) {
+                    mostrarToast('Login realizado com sucesso!', 'success');
+                    fecharModal('modalLogin');
+                    
+                    // Recarregar a página para atualizar o estado do usuário
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    mostrarToast(data.message, 'error');
+                }
                 
             } catch (error) {
                 mostrarToast('Erro ao realizar login', 'error');
@@ -757,15 +1498,25 @@
                 return;
             }
             
+            formData.append('acao', 'registrar');
+            
             try {
-                // Simular resposta de API
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                const response = await fetch('api/auth.php', {
+                    method: 'POST',
+                    body: formData
+                });
                 
-                mostrarToast('Cadastro realizado com sucesso!', 'success');
-                fecharModal('modalRegistro');
-                setTimeout(() => {
-                    mostrarModalLogin();
-                }, 1500);
+                const data = await response.json();
+                
+                if (data.success) {
+                    mostrarToast('Cadastro realizado com sucesso!', 'success');
+                    fecharModal('modalRegistro');
+                    setTimeout(() => {
+                        mostrarModalLogin();
+                    }, 1500);
+                } else {
+                    mostrarToast(data.message, 'error');
+                }
                 
             } catch (error) {
                 mostrarToast('Erro ao realizar cadastro', 'error');
@@ -773,27 +1524,82 @@
             }
         });
 
+        // Agendamento
+        document.getElementById('formAgendamento').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            // Validar se horário foi selecionado
+            if (!formData.get('horario')) {
+                mostrarToast('Por favor, selecione um horário!', 'warning');
+                return;
+            }
+            
+            try {
+                // Simular agendamento (aqui você implementaria a API real)
+                mostrarToast('Agendamento realizado com sucesso!', 'success');
+                fecharModal('modalAgendamento');
+                
+                // Limpar formulário
+                this.reset();
+                document.getElementById('horarioSelecionado').value = '';
+                
+                // Remover seleção dos horários
+                document.querySelectorAll('.horario-btn').forEach(btn => {
+                    btn.classList.remove('border-secondary', 'text-secondary', 'bg-secondary/10');
+                    btn.classList.add('border-gray-200', 'text-gray-700');
+                });
+                
+            } catch (error) {
+                mostrarToast('Erro ao realizar agendamento', 'error');
+                console.error('Erro:', error);
+            }
+        });
+
         // Logout
         async function logout() {
             try {
-                mostrarToast('Logout realizado com sucesso!', 'success');
-                setTimeout(() => {
-                    document.getElementById('userLoggedIn').classList.add('hidden');
-                    document.getElementById('userNotLoggedIn').classList.remove('hidden');
-                }, 1500);
+                const response = await fetch('api/auth.php', {
+                    method: 'POST',
+                    body: new URLSearchParams({
+                        acao: 'logout'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    mostrarToast('Logout realizado com sucesso!', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    mostrarToast('Erro ao fazer logout', 'error');
+                }
             } catch (error) {
                 mostrarToast('Erro ao fazer logout', 'error');
                 console.error('Erro:', error);
             }
         }
 
-        // Funções placeholder
-        function mostrarModalAgendamento() {
-            mostrarToast('Modal de agendamento será implementado em breve!', 'warning');
-        }
-
+        // Agendar serviço específico
         function agendarServico(servicoId) {
-            mostrarToast(`Agendamento do serviço ID: ${servicoId} será implementado em breve!`, 'warning');
+            if (!usuarioLogado) {
+                mostrarToast('Você precisa fazer login primeiro!', 'warning');
+                setTimeout(() => mostrarModalLogin(), 1500);
+                return;
+            }
+            
+            // Abrir modal e pré-selecionar o serviço
+            mostrarModalAgendamento();
+            
+            setTimeout(() => {
+                const selectServico = document.querySelector('select[name="servico_id"]');
+                if (selectServico) {
+                    selectServico.value = servicoId;
+                }
+            }, 100);
         }
 
         // Smooth scroll para links da navbar
@@ -815,6 +1621,7 @@
             if (e.key === 'Escape') {
                 fecharModal('modalLogin');
                 fecharModal('modalRegistro');
+                fecharModal('modalAgendamento');
             }
         });
 
@@ -835,6 +1642,16 @@
         // Observar elementos para animação
         document.querySelectorAll('.service-card').forEach(card => {
             observer.observe(card);
+        });
+
+        // Fechar modais ao clicar no backdrop
+        document.querySelectorAll('[id^="modal"]').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    const modalId = this.id;
+                    fecharModal(modalId);
+                }
+            });
         });
     </script>
 </body>
