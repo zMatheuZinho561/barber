@@ -1,255 +1,215 @@
-<?php
-require_once '../config/database.php';
-
-$erro = '';
-$sucesso = '';
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nome = trim($_POST['nome']);
-    $email = trim($_POST['email']);
-    $telefone = trim($_POST['telefone']);
-    $senha = $_POST['senha'];
-    $confirmar_senha = $_POST['confirmar_senha'];
-    
-    // Validações
-    if (empty($nome) || empty($email) || empty($senha)) {
-        $erro = 'Todos os campos obrigatórios devem ser preenchidos.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $erro = 'Email inválido.';
-    } elseif (strlen($senha) < 6) {
-        $erro = 'A senha deve ter pelo menos 6 caracteres.';
-    } elseif ($senha !== $confirmar_senha) {
-        $erro = 'As senhas não coincidem.';
-    } else {
-        // Verificar se email já existe
-        $database = new Database();
-        $conn = $database->getConnection();
-        
-        $query = "SELECT id FROM usuarios WHERE email = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->execute([$email]);
-        
-        if ($stmt->fetch()) {
-            $erro = 'Este email já está cadastrado.';
-        } else {
-            // Cadastrar usuário
-            $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
-            
-            $query = "INSERT INTO usuarios (nome, email, telefone, senha) VALUES (?, ?, ?, ?)";
-            $stmt = $conn->prepare($query);
-            
-            if ($stmt->execute([$nome, $email, $telefone, $senha_hash])) {
-                $sucesso = 'Cadastro realizado com sucesso! Você pode fazer login agora.';
-            } else {
-                $erro = 'Erro ao cadastrar usuário. Tente novamente.';
-            }
-        }
-    }
-}
-
-iniciarSessao();
-if (usuarioLogado()) {
-    header('Location: perfil.php');
-    exit();
-}
-?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastro - Barbearia Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1a202c',
+                        secondary: '#2d3748',
+                        accent: '#ed8936',
+                        dark: '#0f0f0f'
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s ease-out',
+                        'fade-in': 'fadeIn 0.3s ease-in',
+                        'slide-in': 'slideIn 0.4s ease-out'
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
-        
-        .register-container {
-            background: white;
-            padding: 3rem;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 450px;
-        }
-        
-        .logo {
-            text-align: center;
-            margin-bottom: 2rem;
-            color: #2c3e50;
-        }
-        
-        .logo h1 {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .logo p {
-            color: #666;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #333;
-            font-weight: 500;
-        }
-        
-        .form-group input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-        
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .btn {
-            width: 100%;
-            padding: 1rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .alert {
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .alert-error {
-            background: #fee;
-            color: #c33;
-            border: 1px solid #fcc;
-        }
-        
-        .alert-success {
-            background: #efe;
-            color: #363;
-            border: 1px solid #cfc;
-        }
-        
-        .login-link {
-            text-align: center;
-            margin-top: 2rem;
-            color: #666;
-        }
-        
-        .login-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-        
-        .back-home {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .back-home a {
-            color: #667eea;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .back-home a:hover {
-            text-decoration: underline;
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+            }
+            to {
+                transform: translateX(0);
+            }
         }
     </style>
 </head>
-<body>
-    <div class="register-container">
-        <div class="back-home">
-            <a href="index.php">← Voltar ao início</a>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+    <!-- Background Pattern -->
+<div class="absolute inset-0 opacity-5">
+    <div class="absolute inset-0" 
+         style="background-image: url('data:image/svg+xml;utf8,<svg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'><g fill=\'none\' fill-rule=\'evenodd\'><g fill=\'white\' fill-opacity=\'0.1\'><circle cx=\'30\' cy=\'30\' r=\'1\'/></g></svg>');">
+    </div>
+</div>
+
+    <!-- Navigation -->
+    <nav class="relative z-10 p-6">
+        <div class="flex items-center justify-between max-w-7xl mx-auto">
+            <div class="flex items-center space-x-2 animate-slide-in">
+                <div class="w-10 h-10 bg-gradient-to-r from-orange-400 to-orange-600 rounded-lg flex items-center justify-center">
+                    <span class="text-white font-bold text-lg">✂</span>
+                </div>
+                <span class="text-white font-bold text-xl">Barbearia Premium</span>
+            </div>
+            <a href="index.php" class="text-gray-300 hover:text-white transition-colors duration-300 flex items-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                <span>Voltar ao início</span>
+            </a>
         </div>
-        
-        <div class="logo">
-            <h1>✂️ Cadastro</h1>
-            <p>Crie sua conta na Barbearia Premium</p>
-        </div>
-        
-        <?php if ($erro): ?>
-            <div class="alert alert-error"><?php echo htmlspecialchars($erro); ?></div>
-        <?php endif; ?>
-        
-        <?php if ($sucesso): ?>
-            <div class="alert alert-success"><?php echo htmlspecialchars($sucesso); ?></div>
-        <?php endif; ?>
-        
-        <form method="POST" action="">
-            <div class="form-group">
-                <label for="nome">Nome Completo *</label>
-                <input type="text" id="nome" name="nome" required 
-                       value="<?php echo htmlspecialchars($_POST['nome'] ?? ''); ?>">
+    </nav>
+
+    <!-- Main Content -->
+    <div class="relative z-10 flex items-center justify-center min-h-screen px-4 py-12">
+        <div class="max-w-md w-full animate-fade-in-up">
+            <!-- Card -->
+            <div class="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-8">
+                <!-- Header -->
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-white mb-2">Criar Conta</h1>
+                    <p class="text-gray-300">Junte-se à nossa barbearia premium</p>
+                </div>
+
+                <!-- Alert Messages -->
+                <div id="alertContainer" class="hidden mb-6">
+                    <div id="alertMessage" class="p-4 rounded-xl text-sm font-medium"></div>
+                </div>
+
+                <!-- Form -->
+                <form id="registerForm" class="space-y-6">
+                    <div>
+                        <label for="nome" class="block text-sm font-medium text-gray-300 mb-2">
+                            Nome Completo *
+                        </label>
+                        <input 
+                            type="text" 
+                            id="nome" 
+                            name="nome" 
+                            required 
+                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300"
+                            placeholder="Seu nome completo"
+                        >
+                        <div class="text-red-400 text-sm mt-1 hidden" id="nome-error"></div>
+                    </div>
+
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-300 mb-2">
+                            Email *
+                        </label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            required 
+                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300"
+                            placeholder="seu@email.com"
+                        >
+                        <div class="text-red-400 text-sm mt-1 hidden" id="email-error"></div>
+                    </div>
+
+                    <div>
+                        <label for="telefone" class="block text-sm font-medium text-gray-300 mb-2">
+                            Telefone
+                        </label>
+                        <input 
+                            type="tel" 
+                            id="telefone" 
+                            name="telefone"
+                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300"
+                            placeholder="(11) 99999-9999"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="senha" class="block text-sm font-medium text-gray-300 mb-2">
+                            Senha *
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="password" 
+                                id="senha" 
+                                name="senha" 
+                                required 
+                                minlength="6"
+                                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300"
+                                placeholder="Mínimo 6 caracteres"
+                            >
+                            <button type="button" onclick="togglePassword('senha')" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="text-red-400 text-sm mt-1 hidden" id="senha-error"></div>
+                    </div>
+
+                    <div>
+                        <label for="confirmar_senha" class="block text-sm font-medium text-gray-300 mb-2">
+                            Confirmar Senha *
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="password" 
+                                id="confirmar_senha" 
+                                name="confirmar_senha" 
+                                required 
+                                minlength="6"
+                                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300"
+                                placeholder="Confirme sua senha"
+                            >
+                            <button type="button" onclick="togglePassword('confirmar_senha')" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="text-red-400 text-sm mt-1 hidden" id="confirmar-senha-error"></div>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        id="submitBtn"
+                        class="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-transparent"
+                    >
+                        <span id="submitText">Criar Conta</span>
+                        <span id="submitSpinner" class="hidden">
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Criando conta...
+                        </span>
+                    </button>
+                </form>
+
+                <!-- Login Link -->
+                <div class="text-center mt-6 pt-6 border-t border-white/20">
+                    <p class="text-gray-300">
+                        Já tem uma conta? 
+                        <a href="login.php" class="text-orange-400 hover:text-orange-300 font-medium transition-colors duration-300">
+                            Faça login
+                        </a>
+                    </p>
+                </div>
             </div>
-            
-            <div class="form-group">
-                <label for="email">Email *</label>
-                <input type="email" id="email" name="email" required 
-                       value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
-            </div>
-            
-            <div class="form-group">
-                <label for="telefone">Telefone</label>
-                <input type="tel" id="telefone" name="telefone" 
-                       placeholder="(11) 99999-9999"
-                       value="<?php echo htmlspecialchars($_POST['telefone'] ?? ''); ?>">
-            </div>
-            
-            <div class="form-group">
-                <label for="senha">Senha *</label>
-                <input type="password" id="senha" name="senha" required 
-                       minlength="6" placeholder="Mínimo 6 caracteres">
-            </div>
-            
-            <div class="form-group">
-                <label for="confirmar_senha">Confirmar Senha *</label>
-                <input type="password" id="confirmar_senha" name="confirmar_senha" required 
-                       minlength="6">
-            </div>
-            
-            <button type="submit" class="btn">Cadastrar</button>
-        </form>
-        
-        <div class="login-link">
-            Já tem uma conta? <a href="login.php">Faça login</a>
         </div>
     </div>
 
@@ -268,16 +228,116 @@ if (usuarioLogado()) {
             
             e.target.value = value;
         });
-        
-        // Validação de senhas
-        document.querySelector('form').addEventListener('submit', function(e) {
-            const senha = document.getElementById('senha').value;
-            const confirmarSenha = document.getElementById('confirmar_senha').value;
+
+        // Toggle password visibility
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            const type = field.type === 'password' ? 'text' : 'password';
+            field.type = type;
+        }
+
+        // Mostrar alerta
+        function showAlert(message, type) {
+            const container = document.getElementById('alertContainer');
+            const messageEl = document.getElementById('alertMessage');
+            
+            container.classList.remove('hidden');
+            messageEl.className = `p-4 rounded-xl text-sm font-medium ${
+                type === 'error' 
+                    ? 'bg-red-500/20 text-red-300 border border-red-500/30' 
+                    : 'bg-green-500/20 text-green-300 border border-green-500/30'
+            }`;
+            messageEl.textContent = message;
+            
+            setTimeout(() => {
+                container.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Validação do formulário
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+            const submitSpinner = document.getElementById('submitSpinner');
+            
+            // Limpar erros anteriores
+            document.querySelectorAll('[id$="-error"]').forEach(el => el.classList.add('hidden'));
+            
+            const formData = new FormData(this);
+            
+            // Validações client-side
+            const nome = formData.get('nome').trim();
+            const email = formData.get('email').trim();
+            const senha = formData.get('senha');
+            const confirmarSenha = formData.get('confirmar_senha');
+            
+            let hasError = false;
+            
+            if (nome.length < 2) {
+                document.getElementById('nome-error').textContent = 'Nome deve ter pelo menos 2 caracteres';
+                document.getElementById('nome-error').classList.remove('hidden');
+                hasError = true;
+            }
+            
+            if (!email.includes('@')) {
+                document.getElementById('email-error').textContent = 'Email inválido';
+                document.getElementById('email-error').classList.remove('hidden');
+                hasError = true;
+            }
+            
+            if (senha.length < 6) {
+                document.getElementById('senha-error').textContent = 'Senha deve ter pelo menos 6 caracteres';
+                document.getElementById('senha-error').classList.remove('hidden');
+                hasError = true;
+            }
             
             if (senha !== confirmarSenha) {
-                e.preventDefault();
-                alert('As senhas não coincidem!');
+                document.getElementById('confirmar-senha-error').textContent = 'As senhas não coincidem';
+                document.getElementById('confirmar-senha-error').classList.remove('hidden');
+                hasError = true;
             }
+            
+            if (hasError) return;
+            
+            // Mostrar loading
+            submitBtn.disabled = true;
+            submitText.classList.add('hidden');
+            submitSpinner.classList.remove('hidden');
+            
+            try {
+                const response = await fetch('api/register.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('Conta criada com sucesso! Redirecionando para o login...', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'login.php';
+                    }, 2000);
+                } else {
+                    showAlert(result.message || 'Erro ao criar conta. Tente novamente.', 'error');
+                }
+            } catch (error) {
+                showAlert('Erro de conexão. Tente novamente.', 'error');
+            } finally {
+                // Remover loading
+                submitBtn.disabled = false;
+                submitText.classList.remove('hidden');
+                submitSpinner.classList.add('hidden');
+            }
+        });
+
+        // Animações de entrada
+        document.addEventListener('DOMContentLoaded', function() {
+            const elements = document.querySelectorAll('.animate-fade-in-up, .animate-slide-in');
+            elements.forEach((el, index) => {
+                el.style.animationDelay = `${index * 0.1}s`;
+            });
         });
     </script>
 </body>

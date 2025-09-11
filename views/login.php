@@ -1,218 +1,269 @@
-<?php
-require_once '../config/database.php';
 
-$erro = '';
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email = trim($_POST['email']);
-    $senha = $_POST['senha'];
-    
-    if (empty($email) || empty($senha)) {
-        $erro = 'Email e senha são obrigatórios.';
-    } else {
-        $database = new Database();
-        $conn = $database->getConnection();
-        
-        $query = "SELECT id, nome, email, senha, tipo FROM usuarios WHERE email = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->execute([$email]);
-        $usuario = $stmt->fetch();
-        
-        if ($usuario && password_verify($senha, $usuario['senha'])) {
-            iniciarSessao();
-            $_SESSION['usuario_id'] = $usuario['id'];
-            $_SESSION['nome'] = $usuario['nome'];
-            $_SESSION['email'] = $usuario['email'];
-            $_SESSION['tipo'] = $usuario['tipo'];
-            
-            // Redirecionar baseado no tipo de usuário
-            if ($usuario['tipo'] === 'admin') {
-                header('Location: admin/');
-            } else {
-                header('Location: perfil.php');
-            }
-            exit();
-        } else {
-            $erro = 'Email ou senha incorretos.';
-        }
-    }
-}
-
-iniciarSessao();
-if (usuarioLogado()) {
-    if (isAdmin()) {
-        header('Location: admin/');
-    } else {
-        header('Location: perfil.php');
-    }
-    exit();
-}
-?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Barbearia Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1a202c',
+                        secondary: '#2d3748',
+                        accent: '#ed8936',
+                        dark: '#0f0f0f'
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s ease-out',
+                        'fade-in': 'fadeIn 0.3s ease-in',
+                        'slide-in': 'slideIn 0.4s ease-out'
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
-        
-        .login-container {
-            background: white;
-            padding: 3rem;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
-        }
-        
-        .logo {
-            text-align: center;
-            margin-bottom: 2rem;
-            color: #2c3e50;
-        }
-        
-        .logo h1 {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .logo p {
-            color: #666;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #333;
-            font-weight: 500;
-        }
-        
-        .form-group input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-        
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .btn {
-            width: 100%;
-            padding: 1rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .alert-error {
-            background: #fee;
-            color: #c33;
-            border: 1px solid #fcc;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .register-link {
-            text-align: center;
-            margin-top: 2rem;
-            color: #666;
-        }
-        
-        .register-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        
-        .register-link a:hover {
-            text-decoration: underline;
-        }
-        
-        .back-home {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .back-home a {
-            color: #667eea;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .back-home a:hover {
-            text-decoration: underline;
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+            }
+            to {
+                transform: translateX(0);
+            }
         }
     </style>
 </head>
-<body>
-    <div class="login-container">
-        <div class="back-home">
-            <a href="index.php">← Voltar ao início</a>
-        </div>
-        
-        <div class="logo">
-            <h1>✂️ Login</h1>
-            <p>Acesse sua conta</p>
-        </div>
-        
-        <?php if ($erro): ?>
-            <div class="alert-error"><?php echo htmlspecialchars($erro); ?></div>
-        <?php endif; ?>
-        
-        <form method="POST" action="">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required 
-                       value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
-            </div>
-            
-            <div class="form-group">
-                <label for="senha">Senha</label>
-                <input type="password" id="senha" name="senha" required>
-            </div>
-            
-            <button type="submit" class="btn">Entrar</button>
-        </form>
-        
-        <div class="register-link">
-            Não tem uma conta? <a href="registro.php">Cadastre-se</a>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+    <!-- Background Pattern -->
+    <div class="absolute inset-0 opacity-5">
+        <div class="absolute inset-0" 
+             style="background-image: url('data:image/svg+xml;utf8,<svg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'><g fill=\'none\' fill-rule=\'evenodd\'><g fill=\'white\' fill-opacity=\'0.1\'><circle cx=\'30\' cy=\'30\' r=\'1\'/></g></svg>');">
         </div>
     </div>
+
+    <!-- Navigation -->
+    <nav class="relative z-10 p-6">
+        <div class="flex items-center justify-between max-w-7xl mx-auto">
+            <div class="flex items-center space-x-2 animate-slide-in">
+                <div class="w-10 h-10 bg-gradient-to-r from-orange-400 to-orange-600 rounded-lg flex items-center justify-center">
+                    <span class="text-white font-bold text-lg">✂</span>
+                </div>
+                <span class="text-white font-bold text-xl">Barbearia Premium</span>
+            </div>
+            <a href="index.php" class="text-gray-300 hover:text-white transition-colors duration-300 flex items-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                <span>Voltar ao início</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="relative z-10 flex items-center justify-center min-h-screen px-4 py-12">
+        <div class="max-w-md w-full animate-fade-in-up">
+            <!-- Card -->
+            <div class="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-8">
+                <!-- Header -->
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-white mb-2">Bem-vindo de volta</h1>
+                    <p class="text-gray-300">Acesse sua conta para continuar</p>
+                </div>
+
+                <!-- Alert Messages -->
+                <div id="alertContainer" class="hidden mb-6">
+                    <div id="alertMessage" class="p-4 rounded-xl text-sm font-medium"></div>
+                </div>
+
+                <!-- Form -->
+                <form id="loginForm" class="space-y-6">
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-300 mb-2">
+                            Email
+                        </label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            required 
+                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300"
+                            placeholder="seu@email.com"
+                        >
+                        <div class="text-red-400 text-sm mt-1 hidden" id="email-error"></div>
+                    </div>
+
+                    <div>
+                        <label for="senha" class="block text-sm font-medium text-gray-300 mb-2">
+                            Senha
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="password" 
+                                id="senha" 
+                                name="senha" 
+                                required 
+                                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300"
+                                placeholder="Sua senha"
+                            >
+                            <button type="button" onclick="togglePassword('senha')" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="text-red-400 text-sm mt-1 hidden" id="senha-error"></div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="remember" name="remember" class="rounded border-white/20 bg-white/10 text-orange-500 focus:ring-orange-500">
+                            <span class="ml-2 text-sm text-gray-300">Lembrar-me</span>
+                        </label>
+                        <a href="#" class="text-sm text-orange-400 hover:text-orange-300 transition-colors duration-300">
+                            Esqueceu a senha?
+                        </a>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        id="submitBtn"
+                        class="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-transparent"
+                    >
+                        <span id="submitText">Entrar</span>
+                        <span id="submitSpinner" class="hidden">
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Entrando...
+                        </span>
+                    </button>
+                </form>
+
+                <!-- Register Link -->
+                <div class="text-center mt-6 pt-6 border-t border-white/20">
+                    <p class="text-gray-300">
+                        Não tem uma conta? 
+                        <a href="registro.php" class="text-orange-400 hover:text-orange-300 font-medium transition-colors duration-300">
+                            Cadastre-se
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Demo Credentials -->
+            <div class="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                <p class="text-blue-300 text-sm text-center mb-2">
+                    <strong>Credenciais de Teste:</strong>
+                </p>
+                <div class="text-blue-200 text-xs text-center space-y-1">
+                    <p>Admin: admin@barbearia.com / admin123</p>
+                    <p>Cliente: cliente@teste.com / 123456</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle password visibility
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            const type = field.type === 'password' ? 'text' : 'password';
+            field.type = type;
+        }
+
+        // Mostrar alerta
+        function showAlert(message, type) {
+            const container = document.getElementById('alertContainer');
+            const messageEl = document.getElementById('alertMessage');
+            
+            container.classList.remove('hidden');
+            messageEl.className = `p-4 rounded-xl text-sm font-medium ${
+                type === 'error' 
+                    ? 'bg-red-500/20 text-red-300 border border-red-500/30' 
+                    : 'bg-green-500/20 text-green-300 border border-green-500/30'
+            }`;
+            messageEl.textContent = message;
+            
+            setTimeout(() => {
+                container.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Handle form submission
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+            const submitSpinner = document.getElementById('submitSpinner');
+            
+            // Clear previous errors
+            document.querySelectorAll('[id$="-error"]').forEach(el => el.classList.add('hidden'));
+            
+            const formData = new FormData(this);
+            
+            // Show loading
+            submitBtn.disabled = true;
+            submitText.classList.add('hidden');
+            submitSpinner.classList.remove('hidden');
+            
+            try {
+                const response = await fetch('../api/login.php', { 
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('Login realizado com sucesso! Redirecionando...', 'success');
+                    setTimeout(() => {
+                        if (result.redirect) {
+                            window.location.href = result.redirect;
+                        } else {
+                            window.location.href = result.user_type === 'admin' ? 'admin/' : 'perfil.php';
+                        }
+                    }, 1500);
+                } else {
+                    showAlert(result.message || 'Email ou senha incorretos', 'error');
+                }
+            } catch (error) {
+                showAlert('Erro de conexão. Tente novamente.', 'error');
+            } finally {
+                // Remove loading
+                submitBtn.disabled = false;
+                submitText.classList.remove('hidden');
+                submitSpinner.classList.add('hidden');
+            }
+        });
+
+        // Demo credentials click handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for success message from registration
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('registered') === 'success') {
+                showAlert('Conta criada com sucesso! Faça login para continuar.', 'success');
+            }
+        });
+    </script>
 </body>
 </html>
