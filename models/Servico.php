@@ -1,5 +1,5 @@
 <?php
-require_once 'config/database.php';
+require_once __DIR__ . '/../config/database.php';
 
 class Servico {
     private $conn;
@@ -24,7 +24,36 @@ class Servico {
             $stmt->execute($params);
             return $stmt->fetchAll();
         } catch (Exception $e) {
-            return [];
+            // Em caso de erro, retornar serviços padrão
+            return [
+                [
+                    'id' => 1,
+                    'nome' => 'Corte Clássico',
+                    'descricao' => 'Corte tradicional com acabamento impecável, incluindo lavagem e finalização com produtos premium.',
+                    'preco' => 45.00,
+                    'duracao' => 45,
+                    'imagem' => null,
+                    'status' => 'ativo'
+                ],
+                [
+                    'id' => 2,
+                    'nome' => 'Barba + Bigode',
+                    'descricao' => 'Aparagem e modelagem profissional da barba e bigode com produtos especializados e toalha quente.',
+                    'preco' => 35.00,
+                    'duracao' => 30,
+                    'imagem' => null,
+                    'status' => 'ativo'
+                ],
+                [
+                    'id' => 3,
+                    'nome' => 'Pacote Completo',
+                    'descricao' => 'Experiência completa: corte, barba, sobrancelha, lavagem e relaxamento. O melhor que oferecemos.',
+                    'preco' => 75.00,
+                    'duracao' => 90,
+                    'imagem' => null,
+                    'status' => 'ativo'
+                ]
+            ];
         }
     }
     
