@@ -1,119 +1,250 @@
 <?php
-// test_connection.php
-header('Content-Type: application/json');
+// teste_conexao.php - Script para diagnosticar problemas de conexão
 
+// Configurações do banco de dados
+$config = [
+    'host' => 'localhost',
+    'dbname' => 'barbearia_system',
+    'username' => 'root',
+    'password' => '',
+    'charset' => 'utf8mb4'
+];
+
+echo "<h2>🔍 Diagnóstico de Conexão - Sistema Barbearia</h2>";
+echo "<hr>";
+
+// 1. Verificar se a extensão PDO está disponível
+echo "<h3>1. Verificando extensões PHP</h3>";
+if (extension_loaded('pdo')) {
+    echo "✅ PDO: Disponível<br>";
+} else {
+    echo "❌ PDO: NÃO DISPONÍVEL - Instale a extensão php-pdo<br>";
+}
+
+if (extension_loaded('pdo_mysql')) {
+    echo "✅ PDO MySQL: Disponível<br>";
+} else {
+    echo "❌ PDO MySQL: NÃO DISPONÍVEL - Instale a extensão php-pdo-mysql<br>";
+}
+
+echo "<br>";
+
+// 2. Testar conexão básica com MySQL
+echo "<h3>2. Testando conexão com MySQL</h3>";
 try {
-    // Incluir configuração do banco
-    require_once 'config/database.php';
+    $dsn = "mysql:host={$config['host']};charset={$config['charset']}";
+    $pdo = new PDO($dsn, $config['username'], $config['password'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
+    echo "✅ Conexão com servidor MySQL: SUCESSO<br>";
     
-    echo "<h1>🔧 Teste de Conexão - BarberShop Elite</h1>";
+    // Verificar versão do MySQL
+    $version = $pdo->query('SELECT VERSION()')->fetchColumn();
+    echo "📋 Versão do MySQL: {$version}<br>";
     
-    // Testar conexão
-    echo "<h2>1. Testando Conexão com Banco:</h2>";
-    $conexaoTeste = testarConexao();
+} catch (PDOException $e) {
+    echo "❌ Erro ao conectar com MySQL: " . $e->getMessage() . "<br>";
+    echo "<strong>Possíveis soluções:</strong><br>";
+    echo "- Verifique se o XAMPP/WAMP está rodando<br>";
+    echo "- Verifique se o serviço MySQL está ativo<br>";
+    echo "- Verifique as credenciais (usuário/senha)<br>";
+    echo "<br>";
+}
+
+echo "<br>";
+
+// 3. Verificar se o banco existe
+echo "<h3>3. Verificando banco de dados</h3>";
+try {
+    $dsn = "mysql:host={$config['host']};charset={$config['charset']}";
+    $pdo = new PDO($dsn, $config['username'], $config['password'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
     
-    if ($conexaoTeste['success']) {
-        echo "✅ " . $conexaoTeste['message'] . "<br>";
+    // Verificar se o banco existe
+    $stmt = $pdo->prepare("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+    $stmt->execute([$config['dbname']]);
+    
+    if ($stmt->rowCount() > 0) {
+        echo "✅ Banco 'barbearia_system': EXISTE<br>";
         
-        // Testar estrutura do banco
-        echo "<h2>2. Verificando Estrutura do Banco:</h2>";
-        $pdo = getConnection();
+        // Conectar ao banco específico
+        $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
+        $pdo = new PDO($dsn, $config['username'], $config['password'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        ]);
         
-        // Verificar tabelas existentes
-        $stmt = $pdo->query("SHOW TABLES");
-        $tabelas = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        
-        echo "<h3>Tabelas encontradas:</h3>";
-        if (empty($tabelas)) {
-            echo "❌ Nenhuma tabela encontrada<br>";
-            echo "<p style='color: orange;'>⚠️ Execute o script SQL para criar as tabelas necessárias</p>";
-        } else {
-            foreach ($tabelas as $tabela) {
-                echo "📋 " . $tabela . "<br>";
-            }
-        }
-        
-        // Verificar tabela usuarios especificamente
-        if (in_array('usuarios', $tabelas)) {
-            echo "<h3>Estrutura da tabela 'usuarios':</h3>";
-            $stmt = $pdo->query("DESCRIBE usuarios");
-            $campos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            echo "<table border='1' cellpadding='5' cellspacing='0'>";
-            echo "<tr><th>Campo</th><th>Tipo</th><th>Nulo</th><th>Padrão</th></tr>";
-            foreach ($campos as $campo) {
-                echo "<tr>";
-                echo "<td>" . $campo['Field'] . "</td>";
-                echo "<td>" . $campo['Type'] . "</td>";
-                echo "<td>" . $campo['Null'] . "</td>";
-                echo "<td>" . ($campo['Default'] ?? 'NULL') . "</td>";
-                echo "</tr>";
-            }
-            echo "</table>";
-            
-            // Contar usuários
-            $stmt = $pdo->query("SELECT COUNT(*) as total FROM usuarios");
-            $total = $stmt->fetch()['total'];
-            echo "<p>👥 Total de usuários cadastrados: <strong>$total</strong></p>";
-        }
+        echo "✅ Conexão com banco 'barbearia_system': SUCESSO<br>";
         
     } else {
-        echo "❌ " . $conexaoTeste['message'] . "<br>";
+        echo "❌ Banco 'barbearia_system': NÃO EXISTE<br>";
+        echo "<strong>Criando banco de dados...</strong><br>";
+        
+        $pdo->exec("CREATE DATABASE barbearia_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        echo "✅ Banco 'barbearia_system' criado com sucesso!<br>";
     }
     
-    echo "<h2>3. Testando APIs:</h2>";
+} catch (PDOException $e) {
+    echo "❌ Erro ao verificar/criar banco: " . $e->getMessage() . "<br>";
+}
+
+echo "<br>";
+
+// 4. Verificar tabelas
+echo "<h3>4. Verificando estrutura do banco</h3>";
+try {
+    $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
+    $pdo = new PDO($dsn, $config['username'], $config['password'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
     
-    // Testar se arquivos da API existem
-    $arquivosAPI = [
-        'api/usuarios.php' => 'API de Usuários',
-        'api/agendamentos.php' => 'API de Agendamentos',
-        'models/Usuario.php' => 'Modelo Usuario'
-    ];
+    $tabelas_necessarias = ['usuarios', 'servicos', 'agendamentos', 'barbeiros'];
+    $tabelas_existentes = [];
     
-    foreach ($arquivosAPI as $arquivo => $nome) {
-        if (file_exists($arquivo)) {
-            echo "✅ $nome ($arquivo) - Encontrado<br>";
+    $stmt = $pdo->query("SHOW TABLES");
+    while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
+        $tabelas_existentes[] = $row[0];
+    }
+    
+    foreach ($tabelas_necessarias as $tabela) {
+        if (in_array($tabela, $tabelas_existentes)) {
+            echo "✅ Tabela '{$tabela}': EXISTE<br>";
         } else {
-            echo "❌ $nome ($arquivo) - Não encontrado<br>";
+            echo "❌ Tabela '{$tabela}': NÃO EXISTE<br>";
         }
     }
     
-    echo "<h2>4. Configurações PHP:</h2>";
-    echo "🔧 Versão PHP: " . PHP_VERSION . "<br>";
-    echo "🔧 PDO MySQL: " . (extension_loaded('pdo_mysql') ? '✅ Habilitado' : '❌ Desabilitado') . "<br>";
-    echo "🔧 Sessions: " . (extension_loaded('session') ? '✅ Habilitado' : '❌ Desabilitado') . "<br>";
+    if (empty($tabelas_existentes)) {
+        echo "<br><strong>⚠️ Nenhuma tabela encontrada! Execute o script SQL para criar as tabelas.</strong><br>";
+    }
     
-    echo "<h2>5. Instruções:</h2>";
-    echo "<div style='background: #f0f8ff; padding: 15px; border-left: 4px solid #007bff;'>";
-    echo "<h3>Para configurar o sistema:</h3>";
-    echo "<ol>";
-    echo "<li>📊 Execute o script SQL no phpMyAdmin ou MySQL Workbench</li>";
-    echo "<li>🔧 Verifique as configurações do banco em <code>config/database.php</code></li>";
-    echo "<li>📁 Certifique-se que os arquivos da API estão na pasta <code>api/</code></li>";
-    echo "<li>🌐 Teste o login no sistema</li>";
-    echo "</ol>";
-    echo "</div>";
+} catch (PDOException $e) {
+    echo "❌ Erro ao verificar tabelas: " . $e->getMessage() . "<br>";
+}
+
+echo "<br>";
+
+// 5. Criar estrutura básica se não existir
+echo "<h3>5. Criando estrutura básica (se necessário)</h3>";
+try {
+    $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
+    $pdo = new PDO($dsn, $config['username'], $config['password'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
     
-    echo "<style>";
-    echo "body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }";
-    echo "h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }";
-    echo "h2 { color: #007bff; margin-top: 30px; }";
-    echo "h3 { color: #666; }";
-    echo "table { margin: 10px 0; border-collapse: collapse; width: 100%; }";
-    echo "th { background: #007bff; color: white; }";
-    echo "td, th { padding: 8px; text-align: left; }";
-    echo "code { background: #f5f5f5; padding: 2px 5px; border-radius: 3px; }";
-    echo "</style>";
+    // Criar tabela usuarios se não existir
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nome VARCHAR(100) NOT NULL,
+            email VARCHAR(100) NOT NULL UNIQUE,
+            telefone VARCHAR(20),
+            senha VARCHAR(255) NOT NULL,
+            tipo_usuario ENUM('cliente', 'barbeiro', 'admin') DEFAULT 'cliente',
+            status ENUM('ativo', 'inativo') DEFAULT 'ativo',
+            data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    
+    // Criar tabela servicos se não existir
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS servicos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nome VARCHAR(100) NOT NULL,
+            descricao TEXT,
+            preco DECIMAL(10,2) NOT NULL,
+            duracao INT NOT NULL COMMENT 'Duração em minutos',
+            imagem VARCHAR(255),
+            status ENUM('ativo', 'inativo') DEFAULT 'ativo',
+            data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    
+    // Criar tabela agendamentos se não existir
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS agendamentos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            usuario_id INT NOT NULL,
+            barbeiro_id INT NOT NULL,
+            servico_id INT NOT NULL,
+            data_agendamento DATE NOT NULL,
+            horario TIME NOT NULL,
+            observacoes TEXT,
+            status ENUM('agendado', 'confirmado', 'em_andamento', 'concluido', 'cancelado', 'rejeitado') DEFAULT 'agendado',
+            data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+            FOREIGN KEY (barbeiro_id) REFERENCES usuarios(id),
+            FOREIGN KEY (servico_id) REFERENCES servicos(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    
+    echo "✅ Estrutura básica criada/verificada com sucesso!<br>";
+    
+    // Inserir dados de exemplo se não existirem
+    $stmt = $pdo->query("SELECT COUNT(*) FROM usuarios");
+    $count = $stmt->fetchColumn();
+    
+    if ($count == 0) {
+        echo "<br><strong>Inserindo dados de exemplo...</strong><br>";
+        
+        // Usuário admin padrão
+        $pdo->exec("
+            INSERT INTO usuarios (nome, email, senha, tipo_usuario) VALUES 
+            ('Administrador', 'admin@barbearia.com', '" . password_hash('123456', PASSWORD_DEFAULT) . "', 'admin')
+        ");
+        
+        // Serviços padrão
+        $pdo->exec("
+            INSERT INTO servicos (nome, descricao, preco, duracao) VALUES 
+            ('Corte Clássico', 'Corte tradicional com acabamento impecável', 45.00, 45),
+            ('Barba + Bigode', 'Aparagem e modelagem profissional', 35.00, 30),
+            ('Pacote Completo', 'Corte + Barba + Sobrancelha', 75.00, 90)
+        ");
+        
+        echo "✅ Dados de exemplo inseridos!<br>";
+        echo "📋 Login de teste: admin@barbearia.com / 123456<br>";
+    }
+    
+} catch (PDOException $e) {
+    echo "❌ Erro ao criar estrutura: " . $e->getMessage() . "<br>";
+}
+
+echo "<br>";
+
+// 6. Teste final da função getConnection()
+echo "<h3>6. Testando função getConnection()</h3>";
+try {
+    function getConnection() {
+        $dsn = "mysql:host=localhost;dbname=barbearia_system;charset=utf8mb4";
+        $pdo = new PDO($dsn, 'root', '', [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
+        return $pdo;
+    }
+    
+    $pdo = getConnection();
+    echo "✅ Função getConnection(): FUNCIONANDO<br>";
+    
+    // Teste de login
+    $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ?");
+    $stmt->execute(['admin@barbearia.com']);
+    $usuario = $stmt->fetch();
+    
+    if ($usuario) {
+        echo "✅ Teste de consulta: SUCESSO<br>";
+        echo "📋 Usuário encontrado: " . $usuario['nome'] . "<br>";
+    } else {
+        echo "⚠️ Nenhum usuário encontrado para teste<br>";
+    }
     
 } catch (Exception $e) {
-    echo "<h1>❌ Erro no Teste</h1>";
-    echo "<p style='color: red;'>Erro: " . $e->getMessage() . "</p>";
-    echo "<p>Verifique:</p>";
-    echo "<ul>";
-    echo "<li>Se o arquivo <code>config/database.php</code> existe</li>";
-    echo "<li>Se as configurações do banco estão corretas</li>";
-    echo "<li>Se o MySQL está rodando</li>";
-    echo "<li>Se o banco de dados foi criado</li>";
-    echo "</ul>";
+    echo "❌ Erro na função getConnection(): " . $e->getMessage() . "<br>";
 }
+
+echo "<br><hr>";
+echo "<h3>🎯 Resumo</h3>";
+echo "<p>Execute este script para diagnosticar e corrigir problemas de conexão.<br>";
+echo "Se tudo estiver ✅, seu sistema deve funcionar corretamente!</p>";
 ?>
